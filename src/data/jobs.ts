@@ -56,7 +56,7 @@ export const jobs: Job[] = [
     type: "Festanstellung",
     workModel: "Teilzeit (25h/Woche)",
     department: "Administration",
-    salary: "25-30 €/Std.",
+    salary: "18-20 €/Std.",
     fullDescription: "Als Assistenz der Geschäftsführung sind Sie die rechte Hand unseres Managements. Sie übernehmen vielfältige administrative Aufgaben, koordinieren Termine und Meetings, führen Korrespondenz und sind die erste Anlaufstelle für interne und externe Anfragen. Keine Vorkenntnisse nötig – wir arbeiten Sie ein!",
     requirements: [
       "Keine formale Qualifikation erforderlich – Quereinsteiger willkommen!",
