@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -63,12 +64,16 @@ export const Header = () => {
           <Button asChild size="sm">
             <a href="/#contact" onClick={(e) => handleSectionClick(e, "contact")}>Jetzt bewerben</a>
           </Button>
+          <ThemeToggle />
         </nav>
 
         {/* Mobile Menu Button */}
-        <button className="md:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <X className="w-6 h-6 text-foreground" /> : <Menu className="w-6 h-6 text-foreground" />}
-        </button>
+        <div className="md:hidden flex items-center gap-2">
+          <ThemeToggle />
+          <button className="p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {isMenuOpen ? <X className="w-6 h-6 text-foreground" /> : <Menu className="w-6 h-6 text-foreground" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Navigation */}
