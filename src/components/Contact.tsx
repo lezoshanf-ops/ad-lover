@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Send, Upload } from "lucide-react";
+import { Mail, MapPin, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,13 +17,12 @@ export const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Create mailto link with form data
     const subject = encodeURIComponent(`Bewerbung: ${formData.position || "Initiativbewerbung"}`);
     const body = encodeURIComponent(
       `Name: ${formData.name}\nE-Mail: ${formData.email}\nTelefon: ${formData.phone}\n\nGewünschte Position: ${formData.position || "Initiativbewerbung"}\n\nNachricht:\n${formData.message}`
     );
     
-    window.location.href = `mailto:karriere@beispiel-it.de?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:bewerbung@fritze-it.solutions?subject=${subject}&body=${body}`;
     
     toast.success("E-Mail-Programm wird geöffnet...");
     setIsSubmitting(false);
@@ -53,7 +52,7 @@ export const Contact = () => {
                 
                 <div className="space-y-4">
                   <a
-                    href="mailto:karriere@beispiel-it.de"
+                    href="mailto:info@fritze-it.solutions"
                     className="flex items-start gap-3 group"
                   >
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
@@ -61,20 +60,7 @@ export const Contact = () => {
                     </div>
                     <div>
                       <p className="font-medium text-foreground text-sm">E-Mail</p>
-                      <p className="text-muted-foreground text-sm">karriere@beispiel-it.de</p>
-                    </div>
-                  </a>
-
-                  <a
-                    href="tel:+4912345678900"
-                    className="flex items-start gap-3 group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <Phone className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground text-sm">Telefon</p>
-                      <p className="text-muted-foreground text-sm">+49 123 456789-00</p>
+                      <p className="text-muted-foreground text-sm">info@fritze-it.solutions</p>
                     </div>
                   </a>
 
@@ -84,7 +70,11 @@ export const Contact = () => {
                     </div>
                     <div>
                       <p className="font-medium text-foreground text-sm">Standort</p>
-                      <p className="text-muted-foreground text-sm">Deutschland (Remote möglich)</p>
+                      <p className="text-muted-foreground text-sm">
+                        Willi-Eichler-Straße 26<br />
+                        37079 Göttingen<br />
+                        Deutschland
+                      </p>
                     </div>
                   </div>
                 </div>

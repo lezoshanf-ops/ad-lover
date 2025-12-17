@@ -1,32 +1,6 @@
 import { JobCard } from "@/components/JobCard";
 import { Search } from "lucide-react";
-
-const jobs = [
-  {
-    title: "Consultant Geschäftsoptimierung (w/m/d)",
-    description: "Unterstützung bei der Analyse und Optimierung von Geschäftsprozessen. Beratung unserer Kunden bei der digitalen Transformation und Implementierung effizienter Lösungen.",
-    location: "100% Remote / Homeoffice",
-    type: "Festanstellung",
-    workModel: "Vollzeit",
-    department: "Consulting",
-  },
-  {
-    title: "Assistenz der Geschäftsführung / Sekretariat (w/m/d)",
-    description: "Administrative Unterstützung der Geschäftsführung, Terminkoordination, Korrespondenz und Büroorganisation. Erste Anlaufstelle für interne und externe Anfragen.",
-    location: "Hybrid (2 Tage vor Ort)",
-    type: "Festanstellung",
-    workModel: "Vollzeit / Teilzeit",
-    department: "Administration",
-  },
-  {
-    title: "Softwareentwickler (w/m/d) - Webentwicklung",
-    description: "Entwicklung von Webapplikationen mit modernen Technologien. Eigenverantwortliches Arbeiten nach DevOps-Prinzipien in einem agilen Team.",
-    location: "100% Remote / Homeoffice",
-    type: "Festanstellung",
-    workModel: "Vollzeit",
-    department: "IT & Entwicklung",
-  },
-];
+import { jobs } from "@/data/jobs";
 
 export const JobListings = () => {
   return (
@@ -73,8 +47,15 @@ export const JobListings = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {jobs.map((job, index) => (
             <JobCard
-              key={index}
-              {...job}
+              key={job.id}
+              id={job.id}
+              title={job.title}
+              description={job.description}
+              location={job.location}
+              type={job.type}
+              workModel={job.workModel}
+              department={job.department}
+              salary={job.salary}
               delay={200 + index * 100}
             />
           ))}

@@ -1,23 +1,28 @@
-import { MapPin, Briefcase, Clock, Building2 } from "lucide-react";
+import { MapPin, Briefcase, Clock, Building2, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface JobCardProps {
+  id: string;
   title: string;
   description: string;
   location: string;
   type: string;
   workModel: string;
   department?: string;
+  salary?: string;
   delay?: number;
 }
 
 export const JobCard = ({
+  id,
   title,
   description,
   location,
   type,
   workModel,
   department,
+  salary,
   delay = 0,
 }: JobCardProps) => {
   return (
@@ -56,11 +61,17 @@ export const JobCard = ({
               {department}
             </span>
           )}
+          {salary && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary bg-secondary/10 px-3 py-1.5 rounded-full">
+              <Euro className="w-3.5 h-3.5" />
+              {salary}
+            </span>
+          )}
         </div>
 
         <div className="pt-2">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            Details ansehen
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+            <Link to={`/jobs/${id}`}>Details ansehen</Link>
           </Button>
         </div>
       </div>

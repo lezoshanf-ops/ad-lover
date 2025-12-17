@@ -6,36 +6,42 @@ const teamMembers = [
     role: "Geschäftsführer",
     image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&crop=face",
     description: "20+ Jahre Erfahrung in IT-Strategieberatung",
+    email: "m.schneider@fritze-it.solutions",
   },
   {
     name: "Sarah Weber",
     role: "Leiterin Consulting",
     image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
     description: "Expertin für digitale Transformation",
+    email: "s.weber@fritze-it.solutions",
   },
   {
     name: "Thomas Müller",
     role: "Lead Developer",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
     description: "Full-Stack Entwicklung & Cloud-Architektur",
+    email: "t.mueller@fritze-it.solutions",
   },
   {
     name: "Lisa Hoffmann",
     role: "HR & People Manager",
     image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
     description: "Ihr erster Ansprechpartner für Bewerbungen",
+    email: "l.hoffmann@fritze-it.solutions",
   },
   {
     name: "Jan Becker",
     role: "Senior Consultant",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
     description: "Prozessoptimierung & Projektmanagement",
+    email: "j.becker@fritze-it.solutions",
   },
   {
     name: "Anna Fischer",
     role: "UX/UI Designerin",
     image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
     description: "User Experience & Interface Design",
+    email: "a.fischer@fritze-it.solutions",
   },
 ];
 
@@ -77,12 +83,16 @@ export const Team = () => {
               <div className="p-5">
                 <p className="text-muted-foreground text-sm mb-4">{member.description}</p>
                 <div className="flex gap-3">
-                  <button className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors">
-                    <Linkedin className="w-4 h-4 text-primary" />
-                  </button>
-                  <button className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors">
+                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center cursor-default">
+                    <Linkedin className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <a 
+                    href={`mailto:${member.email}`}
+                    className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                    title={member.email}
+                  >
                     <Mail className="w-4 h-4 text-primary" />
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
