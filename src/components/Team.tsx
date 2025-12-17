@@ -18,7 +18,7 @@ const teamMembers = [
   {
     name: "Thomas Müller",
     role: "Lead Developer",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=500&fit=crop&crop=face&facepad=2",
+    image: "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=500&fit=crop&crop=face&facepad=2",
     description: "Full-Stack Entwicklung & Cloud-Architektur",
     email: "t.mueller@fritze-it.solutions",
   },
