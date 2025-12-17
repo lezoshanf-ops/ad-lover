@@ -1,8 +1,49 @@
 import { Mail, Phone, MapPin, Clock, Briefcase, Shield, Cloud, Code, Headphones, Users, Twitter, Linkedin, Server, Lock, Cog } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo.png";
 
 export const Footer = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+    } else {
+      scrollToTop();
+    }
+  };
+
+  const handleSectionClick = (e: React.MouseEvent, sectionId: string) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
+  const handlePageClick = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    navigate(path);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+  };
+
   return (
     <footer className="bg-foreground text-primary-foreground">
       {/* Main Footer Content */}
@@ -10,9 +51,9 @@ export const Footer = () => {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           {/* Logo & Description */}
           <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center gap-2.5 mb-4">
+            <a href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 mb-4 cursor-pointer">
               <img src={logo} alt="Fritze IT-Systeme Logo" className="h-12 w-auto brightness-0 invert" />
-            </Link>
+            </a>
             <p className="text-primary-foreground/70 text-sm leading-relaxed">
               Fritze IT GmbH – Ihr Partner für Prozessoptimierung und digitale Transformation seit 2011.
             </p>
@@ -44,34 +85,34 @@ export const Footer = () => {
             <h4 className="font-semibold mb-5">Schnellzugriff</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li>
-                <a href="/#jobs" className="hover:text-primary-foreground transition-colors flex items-center gap-2">
+                <a href="/#jobs" onClick={(e) => handleSectionClick(e, 'jobs')} className="hover:text-primary-foreground transition-colors flex items-center gap-2 cursor-pointer">
                   <Briefcase className="w-4 h-4" />
                   Stellenangebote
                 </a>
               </li>
               <li>
-                <a href="/#team" className="hover:text-primary-foreground transition-colors flex items-center gap-2">
+                <a href="/#team" onClick={(e) => handleSectionClick(e, 'team')} className="hover:text-primary-foreground transition-colors flex items-center gap-2 cursor-pointer">
                   <Users className="w-4 h-4" />
                   Unser Team
                 </a>
               </li>
               <li>
-                <a href="/#benefits" className="hover:text-primary-foreground transition-colors flex items-center gap-2">
+                <a href="/#benefits" onClick={(e) => handleSectionClick(e, 'benefits')} className="hover:text-primary-foreground transition-colors flex items-center gap-2 cursor-pointer">
                   <Shield className="w-4 h-4" />
                   Benefits
                 </a>
               </li>
               <li>
-                <a href="/#contact" className="hover:text-primary-foreground transition-colors flex items-center gap-2">
+                <a href="/#contact" onClick={(e) => handleSectionClick(e, 'contact')} className="hover:text-primary-foreground transition-colors flex items-center gap-2 cursor-pointer">
                   <Mail className="w-4 h-4" />
                   Kontakt
                 </a>
               </li>
               <li>
-                <Link to="/ueber-uns" className="hover:text-primary-foreground transition-colors flex items-center gap-2">
+                <a href="/ueber-uns" onClick={(e) => handlePageClick(e, '/ueber-uns')} className="hover:text-primary-foreground transition-colors flex items-center gap-2 cursor-pointer">
                   <Users className="w-4 h-4" />
                   Über uns
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -114,20 +155,18 @@ export const Footer = () => {
               Folgen Sie uns und bleiben Sie informiert.
             </p>
             <div className="flex gap-3 mb-6">
-              <Link 
-                to="/" 
-                className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
+              <span 
+                className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-default"
                 title="Twitter"
               >
                 <Twitter className="w-5 h-5" />
-              </Link>
-              <Link 
-                to="/" 
-                className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
+              </span>
+              <span 
+                className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-default"
                 title="LinkedIn"
               >
                 <Linkedin className="w-5 h-5" />
-              </Link>
+              </span>
               <a 
                 href="mailto:info@fritze-it.solutions" 
                 className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
@@ -151,21 +190,23 @@ export const Footer = () => {
       <div className="container py-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
-            <img src={logo} alt="Fritze IT-Systeme Logo" className="h-8 w-auto brightness-0 invert opacity-60" />
+            <a href="/" onClick={handleLogoClick} className="cursor-pointer">
+              <img src={logo} alt="Fritze IT-Systeme Logo" className="h-8 w-auto brightness-0 invert opacity-60" />
+            </a>
             <p className="text-sm text-primary-foreground/50">
               © {new Date().getFullYear()} Fritze IT GmbH. Alle Rechte vorbehalten.
             </p>
           </div>
           <div className="flex gap-6 text-sm">
-            <Link to="/impressum" className="text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+            <a href="/impressum" onClick={(e) => handlePageClick(e, '/impressum')} className="text-primary-foreground/50 hover:text-primary-foreground transition-colors cursor-pointer">
               Impressum
-            </Link>
-            <Link to="/datenschutz" className="text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+            </a>
+            <a href="/datenschutz" onClick={(e) => handlePageClick(e, '/datenschutz')} className="text-primary-foreground/50 hover:text-primary-foreground transition-colors cursor-pointer">
               Datenschutz
-            </Link>
-            <Link to="/ueber-uns" className="text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+            </a>
+            <a href="/ueber-uns" onClick={(e) => handlePageClick(e, '/ueber-uns')} className="text-primary-foreground/50 hover:text-primary-foreground transition-colors cursor-pointer">
               Über uns
-            </Link>
+            </a>
           </div>
         </div>
       </div>
