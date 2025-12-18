@@ -1,4 +1,4 @@
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -64,6 +64,11 @@ export const Header = () => {
           <Button asChild size="sm">
             <a href="/#contact" onClick={(e) => handleSectionClick(e, "contact")}>Jetzt bewerben</a>
           </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/panel/login">
+              <LogIn className="h-4 w-4" />
+            </Link>
+          </Button>
           <ThemeToggle />
         </nav>
 
@@ -96,6 +101,12 @@ export const Header = () => {
               <a href="/#contact" onClick={(e) => handleSectionClick(e, "contact")}>
                 Jetzt bewerben
               </a>
+            </Button>
+            <Button asChild variant="outline" className="w-full mt-2 gap-2">
+              <Link to="/panel/login" onClick={() => setIsMenuOpen(false)}>
+                <LogIn className="h-4 w-4" />
+                Team Login
+              </Link>
             </Button>
           </nav>
         </div>

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, User, Phone, Euro, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -58,7 +58,9 @@ export default function AdminTasksView() {
     customer_phone: '',
     deadline: '',
     priority: 'medium' as TaskPriority,
-    special_compensation: ''
+    special_compensation: '',
+    test_email: '',
+    test_password: ''
   });
 
   useEffect(() => {
@@ -118,6 +120,8 @@ export default function AdminTasksView() {
       deadline: newTask.deadline || null,
       priority: newTask.priority,
       special_compensation: newTask.special_compensation ? parseFloat(newTask.special_compensation) : null,
+      test_email: newTask.test_email || null,
+      test_password: newTask.test_password || null,
       created_by: user?.id
     });
 
@@ -126,7 +130,7 @@ export default function AdminTasksView() {
     } else {
       toast({ title: 'Erfolg', description: 'Auftrag wurde erstellt.' });
       setIsDialogOpen(false);
-      setNewTask({ title: '', description: '', customer_name: '', customer_phone: '', deadline: '', priority: 'medium', special_compensation: '' });
+      setNewTask({ title: '', description: '', customer_name: '', customer_phone: '', deadline: '', priority: 'medium', special_compensation: '', test_email: '', test_password: '' });
       fetchTasks();
     }
   };
@@ -218,6 +222,19 @@ export default function AdminTasksView() {
                 <Label>Sondervergütung (€)</Label>
                 <Input type="number" step="0.01" value={newTask.special_compensation} onChange={(e) => setNewTask({ ...newTask, special_compensation: e.target.value })} placeholder="0.00" />
               </div>
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium mb-3 text-muted-foreground">Test-Zugangsdaten (Optional)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Test E-Mail</Label>
+                    <Input type="email" value={newTask.test_email} onChange={(e) => setNewTask({ ...newTask, test_email: e.target.value })} placeholder="test@example.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Test Passwort</Label>
+                    <Input type="text" value={newTask.test_password} onChange={(e) => setNewTask({ ...newTask, test_password: e.target.value })} placeholder="Passwort123" />
+                  </div>
+                </div>
+              </div>
               <Button onClick={handleCreateTask} className="w-full">Auftrag erstellen</Button>
             </div>
           </DialogContent>
@@ -283,6 +300,25 @@ export default function AdminTasksView() {
                       </span>
                     )}
                   </div>
+                  {(task.test_email || task.test_password) && (
+                    <div className="mt-3 p-3 bg-muted/50 border border-border rounded-md">
+                      <p className="text-xs font-medium mb-2 text-muted-foreground">Test-Zugangsdaten</p>
+                      <div className="flex flex-wrap gap-4">
+                        {task.test_email && (
+                          <span className="flex items-center gap-1 text-sm">
+                            <Mail className="h-4 w-4" />
+                            {task.test_email}
+                          </span>
+                        )}
+                        {task.test_password && (
+                          <span className="flex items-center gap-1 text-sm font-mono">
+                            <Key className="h-4 w-4" />
+                            {task.test_password}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {assignee && (
                     <div className="mt-3 p-2 bg-muted rounded-md">
                       <span className="font-medium">Zugewiesen an:</span> {assignee.first_name} {assignee.last_name}

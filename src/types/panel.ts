@@ -36,6 +36,8 @@ export interface Task {
   status: TaskStatus;
   special_compensation: number | null;
   notes: string | null;
+  test_email: string | null;
+  test_password: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
