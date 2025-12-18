@@ -23,6 +23,7 @@ export default function PanelLayout({ children, title, onLogoClick }: PanelLayou
   };
 
   const handleLogoClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (onLogoClick) {
       onLogoClick();
     }

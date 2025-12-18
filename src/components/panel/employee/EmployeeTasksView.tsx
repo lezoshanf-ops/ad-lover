@@ -103,12 +103,9 @@ export default function EmployeeTasksView() {
   };
 
   const handleReturnTask = async (taskId: string) => {
-    await supabase.from('tasks').update({ status: 'assigned' }).eq('id', taskId);
-    await supabase.from('task_assignments').update({ 
-      accepted_at: null, 
-      status: 'assigned',
-      progress_notes: progressNotes[taskId] || null
-    }).eq('task_id', taskId).eq('user_id', user?.id);
+    // Delete the assignment completely so task disappears from employee view
+    await supabase.from('task_assignments').delete().eq('task_id', taskId).eq('user_id', user?.id);
+    await supabase.from('tasks').update({ status: 'pending' }).eq('id', taskId);
     toast({ title: 'Auftrag abgegeben', description: 'Der Auftrag wurde zurückgegeben.' });
     fetchTasks();
   };
@@ -202,7 +199,6 @@ export default function EmployeeTasksView() {
                       </Badge>
                       {task.special_compensation && task.special_compensation > 0 && (
                         <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                          <Euro className="h-3 w-3 mr-1" />
                           {task.special_compensation.toFixed(2)} €
                         </Badge>
                       )}
@@ -287,9 +283,8 @@ export default function EmployeeTasksView() {
                           <Button 
                             onClick={() => handleAcceptTask(task.id)} 
                             size="lg"
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                           >
-                            <HandMetal className="h-5 w-5" />
                             Auftrag übernehmen
                           </Button>
                         )}
@@ -299,33 +294,27 @@ export default function EmployeeTasksView() {
                               <Button 
                                 variant="outline" 
                                 onClick={() => handleRequestSms(task.id)} 
-                                className="gap-2"
                               >
-                                <MessageSquare className="h-4 w-4" />
                                 SMS anfordern
                               </Button>
                             )}
                             <Button 
                               onClick={handleGoToDocuments} 
                               variant="neon"
-                              className="gap-2"
                             >
-                              <FileUp className="h-4 w-4" />
                               Abgabe (Dokumente)
                             </Button>
                             <Button 
                               onClick={() => handleCompleteTask(task.id)} 
-                              className="gap-2 bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700"
                             >
-                              <CheckCircle2 className="h-4 w-4" />
                               Auftrag abschließen
                             </Button>
                             <Button 
                               variant="outline"
                               onClick={() => handleReturnTask(task.id)} 
-                              className="gap-2 border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
+                              className="border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
                             >
-                              <Undo2 className="h-4 w-4" />
                               Auftrag abgeben
                             </Button>
                           </>
@@ -333,9 +322,7 @@ export default function EmployeeTasksView() {
                         <Button 
                           variant="glass" 
                           onClick={() => handleUpdateNotes(task.id)}
-                          className="gap-2"
                         >
-                          <ArrowUpRight className="h-4 w-4" />
                           Notizen speichern
                         </Button>
                       </div>
