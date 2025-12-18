@@ -11,25 +11,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTabContext } from '@/components/panel/EmployeeDashboard';
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, ArrowUpRight, Sparkles
+  FileUp, Mail, Key, UserCheck, ArrowUpRight, HandMetal, Undo2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 const priorityConfig: Record<TaskPriority, { color: string; label: string; icon: string }> = {
-  low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30', label: 'Niedrig', icon: '○' },
-  medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30', label: 'Mittel', icon: '◐' },
-  high: { color: 'bg-red-600/30 text-red-200 dark:text-red-300 border-red-500/50 font-bold', label: 'Hoch', icon: '●' },
-  urgent: { color: 'bg-red-700/40 text-red-100 dark:text-red-200 border-red-600/60 font-bold', label: 'Dringend', icon: '⬤' }
+  low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30', label: 'Niedrig', icon: '○' },
+  medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30', label: 'Mittel', icon: '◐' },
+  high: { color: 'bg-red-600/30 text-red-200 dark:text-red-300 border border-red-500/50 font-bold', label: 'Hoch', icon: '●' },
+  urgent: { color: 'bg-red-700/40 text-red-100 dark:text-red-200 border border-red-600/60 font-bold animate-pulse', label: 'Dringend', icon: '⬤' }
 };
 
 const statusConfig: Record<TaskStatus, { color: string; label: string }> = {
-  pending: { color: 'bg-gray-500/20 text-gray-700 dark:text-gray-400', label: 'Offen' },
+  pending: { color: 'bg-muted text-muted-foreground', label: 'Offen' },
   assigned: { color: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400', label: 'Zugewiesen' },
   in_progress: { color: 'bg-blue-500/20 text-blue-700 dark:text-blue-400', label: 'In Bearbeitung' },
   sms_requested: { color: 'bg-purple-500/20 text-purple-700 dark:text-purple-400', label: 'SMS angefordert' },
   completed: { color: 'bg-green-500/20 text-green-700 dark:text-green-400', label: 'Abgeschlossen' },
-  cancelled: { color: 'bg-red-500/20 text-red-700 dark:text-red-400', label: 'Storniert' }
+  cancelled: { color: 'bg-destructive/20 text-destructive', label: 'Storniert' }
 };
 
 export default function EmployeeTasksView() {
@@ -98,7 +98,18 @@ export default function EmployeeTasksView() {
       accepted_at: new Date().toISOString(), 
       status: 'in_progress' 
     }).eq('task_id', taskId).eq('user_id', user?.id);
-    toast({ title: 'Erfolg', description: 'Auftrag angenommen.' });
+    toast({ title: 'Auftrag übernommen!', description: 'Du bist jetzt für diesen Auftrag verantwortlich.' });
+    fetchTasks();
+  };
+
+  const handleReturnTask = async (taskId: string) => {
+    await supabase.from('tasks').update({ status: 'assigned' }).eq('id', taskId);
+    await supabase.from('task_assignments').update({ 
+      accepted_at: null, 
+      status: 'assigned',
+      progress_notes: progressNotes[taskId] || null
+    }).eq('task_id', taskId).eq('user_id', user?.id);
+    toast({ title: 'Auftrag abgegeben', description: 'Der Auftrag wurde zurückgegeben.' });
     fetchTasks();
   };
 
@@ -275,10 +286,11 @@ export default function EmployeeTasksView() {
                         {task.status === 'assigned' && (
                           <Button 
                             onClick={() => handleAcceptTask(task.id)} 
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                            size="lg"
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                           >
-                            <Sparkles className="h-4 w-4" />
-                            Annehmen
+                            <HandMetal className="h-5 w-5" />
+                            Auftrag übernehmen
                           </Button>
                         )}
                         {(task.status === 'in_progress' || task.status === 'sms_requested') && (
@@ -307,6 +319,14 @@ export default function EmployeeTasksView() {
                             >
                               <CheckCircle2 className="h-4 w-4" />
                               Auftrag abschließen
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleReturnTask(task.id)} 
+                              className="gap-2 border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                              Auftrag abgeben
                             </Button>
                           </>
                         )}
