@@ -40,6 +40,32 @@ export default function AdminChatView() {
   useEffect(() => {
     fetchProfiles();
     fetchEmployees();
+
+    // Listen for profile status changes
+    const profileChannel = supabase
+      .channel('admin-chat-profile-updates')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles'
+      }, (payload) => {
+        const updated = payload.new as any;
+        setProfiles(prev => ({
+          ...prev,
+          [updated.user_id]: { ...prev[updated.user_id], ...updated, status: updated.status || 'offline' }
+        }));
+        // Also update employees list
+        setEmployees(prev => prev.map(emp => 
+          emp.user_id === updated.user_id 
+            ? { ...emp, ...updated, status: updated.status || 'offline' }
+            : emp
+        ));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
   }, []);
 
   useEffect(() => {
@@ -279,7 +305,7 @@ export default function AdminChatView() {
                         </AvatarFallback>
                       </Avatar>
                       <span 
-                        className={`absolute -bottom-0.5 -left-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${getStatusColor(empStatus)}`}
+                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${getStatusColor(empStatus)}`}
                       />
                     </div>
                     <div className="text-left">
@@ -332,21 +358,21 @@ export default function AdminChatView() {
                         return (
                           <div
                             key={msg.id}
-                            className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
+                            className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
                           >
-                            <div className="relative shrink-0">
-                              <Avatar className="h-10 w-10">
+                            <div className="relative shrink-0 self-end">
+                              <Avatar className="h-8 w-8">
                                 <AvatarImage src={getProfileAvatar(msg.sender_id) || ''} />
                                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
                                   {senderProfile?.first_name?.[0]}{senderProfile?.last_name?.[0]}
                                 </AvatarFallback>
                               </Avatar>
                               <span 
-                                className={`absolute -bottom-0.5 -left-0.5 h-3.5 w-3.5 rounded-full border-2 border-background ${getStatusColor(senderStatus)}`}
+                                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${getStatusColor(senderStatus)}`}
                               />
                             </div>
-                            <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
-                              <div className={`flex items-center gap-2 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                            <div className={`max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                              <div className={`flex items-center gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
                                 <span className="text-xs font-medium">
                                   {isOwn ? 'Du' : senderName}
                                 </span>
@@ -357,8 +383,8 @@ export default function AdminChatView() {
                               <div
                                 className={`p-3 rounded-2xl ${
                                   isOwn
-                                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                                    : 'bg-muted rounded-tl-sm'
+                                    ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                    : 'bg-muted rounded-bl-sm'
                                 }`}
                               >
                                 {msg.image_url && (
@@ -374,11 +400,11 @@ export default function AdminChatView() {
                                 )}
                               </div>
                               {isOwn && (
-                                <div className="flex justify-end mt-1" title={msg.read_at ? `Gelesen um ${format(new Date(msg.read_at), 'HH:mm', { locale: de })}` : 'Gesendet'}>
+                                <div className="flex items-center gap-1 mt-0.5" title={msg.read_at ? `Gelesen um ${format(new Date(msg.read_at), 'HH:mm', { locale: de })}` : 'Gesendet'}>
                                   {msg.read_at ? (
-                                    <CheckCheck className="h-4 w-4 text-primary" />
+                                    <CheckCheck className="h-3.5 w-3.5 text-primary" />
                                   ) : (
-                                    <Check className="h-4 w-4 text-muted-foreground" />
+                                    <Check className="h-3.5 w-3.5 text-muted-foreground" />
                                   )}
                                 </div>
                               )}

@@ -15,11 +15,20 @@ import EmployeeProfileView from './employee/EmployeeProfileView';
 import EmployeeChatView from './employee/EmployeeChatView';
 import { StatusSelector } from './StatusSelector';
 import { InboxButton } from './InboxButton';
+import { TelegramToast } from './TelegramToast';
 import { cn } from '@/lib/utils';
 
 // Context to share tab navigation
 export const TabContext = createContext<{ setActiveTab: (tab: string) => void } | null>(null);
 export const useTabContext = () => useContext(TabContext);
+
+interface NotificationData {
+  id: string;
+  senderName: string;
+  senderAvatar?: string;
+  senderInitials: string;
+  message: string;
+}
 
 const menuItems = [
   { id: 'tasks', label: 'Aufträge', icon: ClipboardList },
@@ -35,7 +44,8 @@ export default function EmployeeDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userStatus, setUserStatus] = useState<'online' | 'away' | 'busy' | 'offline'>('offline');
-  const { profile, signOut } = useAuth();
+  const [notification, setNotification] = useState<NotificationData | null>(null);
+  const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -85,6 +95,47 @@ export default function EmployeeDashboard() {
     };
   }, [profile?.user_id]);
 
+  // Listen for new chat messages - Telegram-style notification
+  useEffect(() => {
+    if (!user) return;
+
+    const chatChannel = supabase
+      .channel('employee-chat-notifications')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'chat_messages'
+      }, async (payload) => {
+        if (payload.new.recipient_id === user.id && !payload.new.is_group_message && !payload.new.read_at) {
+          // Fetch sender info for Telegram-style toast
+          const { data: senderData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, avatar_url')
+            .eq('user_id', payload.new.sender_id)
+            .single();
+
+          if (senderData) {
+            const avatarUrl = senderData.avatar_url 
+              ? supabase.storage.from('avatars').getPublicUrl(senderData.avatar_url).data.publicUrl
+              : undefined;
+              
+            setNotification({
+              id: payload.new.id,
+              senderName: `${senderData.first_name} ${senderData.last_name}`,
+              senderAvatar: avatarUrl,
+              senderInitials: `${senderData.first_name?.[0] || ''}${senderData.last_name?.[0] || ''}`,
+              message: payload.new.message || (payload.new.image_url ? '📷 Bild' : '')
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(chatChannel);
+    };
+  }, [user]);
+
   const handleSignOut = async () => {
     // Set status to offline
     if (profile?.user_id) {
@@ -100,6 +151,10 @@ export default function EmployeeDashboard() {
   const handleLogoClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setActiveTab('tasks');
+  };
+
+  const handleNotificationClick = () => {
+    setActiveTab('chat');
   };
 
   const renderContent = () => {
@@ -181,7 +236,7 @@ export default function EmployeeDashboard() {
                       {profile?.first_name?.[0]}{profile?.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <span className={`absolute -bottom-0.5 -left-0.5 h-3.5 w-3.5 rounded-full border-2 border-card ${statusColors[userStatus]}`} />
+                  <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card ${statusColors[userStatus]}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{profile?.first_name} {profile?.last_name}</p>
@@ -222,7 +277,7 @@ export default function EmployeeDashboard() {
                         {profile?.first_name?.[0]}{profile?.last_name?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-muted/50 ${statusColors[userStatus]}`} />
+                    <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-muted/50 ${statusColors[userStatus]}`} />
                   </div>
                   <span className="text-sm font-medium">{profile?.first_name}</span>
                 </div>
@@ -254,6 +309,18 @@ export default function EmployeeDashboard() {
           />
         )}
       </div>
+      
+      {/* Telegram-style notification */}
+      {notification && (
+        <TelegramToast
+          senderName={notification.senderName}
+          senderAvatar={notification.senderAvatar}
+          senderInitials={notification.senderInitials}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+          onClick={handleNotificationClick}
+        />
+      )}
     </TabContext.Provider>
   );
 }
