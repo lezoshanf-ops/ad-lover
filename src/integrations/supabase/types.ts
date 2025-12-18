@@ -180,6 +180,8 @@ export type Database = {
           priority: Database["public"]["Enums"]["task_priority"]
           special_compensation: number | null
           status: Database["public"]["Enums"]["task_status"]
+          test_email: string | null
+          test_password: string | null
           title: string
           updated_at: string
         }
@@ -195,6 +197,8 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           special_compensation?: number | null
           status?: Database["public"]["Enums"]["task_status"]
+          test_email?: string | null
+          test_password?: string | null
           title: string
           updated_at?: string
         }
@@ -210,6 +214,8 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           special_compensation?: number | null
           status?: Database["public"]["Enums"]["task_status"]
+          test_email?: string | null
+          test_password?: string | null
           title?: string
           updated_at?: string
         }

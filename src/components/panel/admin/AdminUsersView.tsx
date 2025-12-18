@@ -59,44 +59,34 @@ export default function AdminUsersView() {
       return;
     }
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: newUser.email,
-      password: newUser.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/panel`,
-        data: {
-          first_name: newUser.first_name,
-          last_name: newUser.last_name
-        }
-      }
-    });
-
-    if (authError || !authData.user) {
-      toast({ title: 'Fehler', description: authError?.message || 'Benutzer konnte nicht erstellt werden.', variant: 'destructive' });
+    // Get current session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({ title: 'Fehler', description: 'Nicht angemeldet.', variant: 'destructive' });
       return;
     }
 
-    // Create profile
-    const { error: profileError } = await supabase.from('profiles').insert({
-      user_id: authData.user.id,
-      email: newUser.email,
-      first_name: newUser.first_name,
-      last_name: newUser.last_name
+    // Call Edge Function to create user
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        email: newUser.email,
+        password: newUser.password,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
+        role: newUser.role
+      })
     });
 
-    if (profileError) {
-      toast({ title: 'Warnung', description: 'Profil konnte nicht erstellt werden.', variant: 'destructive' });
-    }
+    const result = await response.json();
 
-    // Create role
-    const { error: roleError } = await supabase.from('user_roles').insert({
-      user_id: authData.user.id,
-      role: newUser.role
-    });
-
-    if (roleError) {
-      toast({ title: 'Warnung', description: 'Rolle konnte nicht zugewiesen werden.', variant: 'destructive' });
+    if (!response.ok) {
+      toast({ title: 'Fehler', description: result.error || 'Benutzer konnte nicht erstellt werden.', variant: 'destructive' });
+      return;
     }
 
     toast({ title: 'Erfolg', description: 'Benutzer wurde erstellt.' });
