@@ -319,7 +319,7 @@ export default function AdminTasksView() {
                         {task.customer_phone}
                       </span>
                     )}
-                    {task.deadline && (
+                    {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         {format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}

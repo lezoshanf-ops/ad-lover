@@ -220,7 +220,7 @@ export default function EmployeeTasksView() {
                     <User className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="truncate">{task.customer_name}</span>
                   </div>
-                  {task.deadline && (
+                  {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>{format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}</span>
