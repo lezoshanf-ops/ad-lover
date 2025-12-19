@@ -244,7 +244,7 @@ export default function AdminEmployeeDetailView({ employee, onBack }: AdminEmplo
               <span 
                 className={`absolute bottom-1 left-1 h-5 w-5 rounded-full border-3 border-card ${
                   (employee as any).status === 'online' ? 'bg-green-500' :
-                  (employee as any).status === 'away' ? 'bg-yellow-500' :
+                  (employee as any).status === 'away' ? 'bg-orange-500' :
                   (employee as any).status === 'busy' ? 'bg-red-500' : 'bg-gray-400'
                 }`}
                 title={
@@ -287,6 +287,10 @@ export default function AdminEmployeeDetailView({ employee, onBack }: AdminEmplo
           <TabsTrigger value="tasks" className="gap-2">
             <ClipboardList className="h-4 w-4" />
             Aufträge ({tasks.length})
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Historie ({tasks.filter(t => t.status === 'completed').length})
           </TabsTrigger>
           <TabsTrigger value="chat" className="gap-2">
             <MessageCircle className="h-4 w-4" />
@@ -359,6 +363,60 @@ export default function AdminEmployeeDetailView({ employee, onBack }: AdminEmplo
               ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-emerald-500" />
+                Abgeschlossene Aufträge
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tasks.filter(t => t.status === 'completed').length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Noch keine abgeschlossenen Aufträge.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.filter(t => t.status === 'completed').map(task => (
+                    <div key={task.id} className="p-4 border rounded-lg bg-emerald-500/5 border-emerald-500/20">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                            {task.title}
+                          </h4>
+                          <p className="text-sm text-muted-foreground mt-1">{task.customer_name}</p>
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{task.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          {task.special_compensation && (
+                            <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 mb-2">
+                              {task.special_compensation.toFixed(2)} €
+                            </Badge>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(task.updated_at), 'dd.MM.yyyy', { locale: de })}
+                          </p>
+                        </div>
+                      </div>
+                      {task.assignment?.progress_notes && (
+                        <div className="mt-3 p-3 bg-muted/50 rounded-lg text-sm">
+                          <p className="text-xs text-muted-foreground mb-1 font-medium">Abschluss-Notizen:</p>
+                          <p className="text-foreground">{task.assignment.progress_notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="chat">

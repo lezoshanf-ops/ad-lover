@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchUserData(session.user.id);
           }, 0);
 
-          // Listen for profile deletion to auto-logout
+          // Listen for profile deletion to auto-logout immediately
           if (profileDeletionChannel) {
             supabase.removeChannel(profileDeletionChannel);
           }
@@ -54,12 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .on('postgres_changes', {
               event: 'DELETE',
               schema: 'public',
-              table: 'profiles',
-              filter: `user_id=eq.${session.user.id}`
-            }, () => {
-              // Profile was deleted - force logout
-              console.log('Profile deleted, forcing logout');
-              supabase.auth.signOut();
+              table: 'profiles'
+            }, (payload) => {
+              // Check if this deletion is for the current user
+              const deletedUserId = (payload.old as any)?.user_id;
+              if (deletedUserId === session.user.id) {
+                console.log('Profile deleted, forcing immediate logout');
+                // Clear local state immediately
+                setUser(null);
+                setSession(null);
+                setProfile(null);
+                setRole(null);
+                // Sign out from Supabase
+                supabase.auth.signOut();
+                // Redirect to login
+                window.location.href = '/panel/login';
+              }
             })
             .subscribe();
         } else {

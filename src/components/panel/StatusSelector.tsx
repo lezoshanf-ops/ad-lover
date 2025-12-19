@@ -16,13 +16,13 @@ type UserStatus = SelectableStatus | 'offline';
 
 const statusConfig: Record<SelectableStatus, { label: string; color: string; bgClass: string }> = {
   online: { label: 'Online', color: 'text-green-500', bgClass: 'bg-green-500' },
-  away: { label: 'Abwesend', color: 'text-yellow-500', bgClass: 'bg-yellow-500' },
+  away: { label: 'Abwesend', color: 'text-orange-500', bgClass: 'bg-orange-500' },
   busy: { label: 'Beschäftigt', color: 'text-red-500', bgClass: 'bg-red-500' },
 };
 
 const allStatusConfig: Record<UserStatus, { label: string; bgClass: string }> = {
   online: { label: 'Online', bgClass: 'bg-green-500' },
-  away: { label: 'Abwesend', bgClass: 'bg-yellow-500' },
+  away: { label: 'Abwesend', bgClass: 'bg-orange-500' },
   busy: { label: 'Beschäftigt', bgClass: 'bg-red-500' },
   offline: { label: 'Offline', bgClass: 'bg-gray-400' },
 };

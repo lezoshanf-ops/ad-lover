@@ -23,7 +23,7 @@ interface UserWithRole extends Profile {
 
 const statusColors: Record<UserStatus, string> = {
   online: 'bg-green-500',
-  away: 'bg-yellow-500',
+  away: 'bg-orange-500',
   busy: 'bg-red-500',
   offline: 'bg-gray-400'
 };
