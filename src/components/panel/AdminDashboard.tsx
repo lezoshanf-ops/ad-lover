@@ -10,7 +10,6 @@ import AdminVacationView from './admin/AdminVacationView';
 import AdminStatsView from './admin/AdminStatsView';
 import { ClipboardList, Users, MessageSquare, Calendar, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { StatusSelector } from './StatusSelector';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminDashboard() {
@@ -127,9 +126,6 @@ export default function AdminDashboard() {
     <PanelLayout 
       title="Admin-Panel" 
       onLogoClick={handleLogoClick}
-      headerActions={
-        <StatusSelector />
-      }
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="glass-panel grid w-full grid-cols-5 lg:w-auto lg:inline-flex p-1.5 gap-1">

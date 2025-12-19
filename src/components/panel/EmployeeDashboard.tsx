@@ -15,7 +15,6 @@ import EmployeeVacationView from './employee/EmployeeVacationView';
 import EmployeeProfileView from './employee/EmployeeProfileView';
 import EmployeeNotificationsView from './employee/EmployeeNotificationsView';
 import { NotificationSettings } from './employee/NotificationSettings';
-import { StatusSelector } from './StatusSelector';
 import { cn } from '@/lib/utils';
 
 // Context to share tab navigation with optional pending task
@@ -309,7 +308,6 @@ export default function EmployeeDashboard() {
               </Button>
 
               <div className="flex items-center gap-2">
-                <StatusSelector />
                 <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-full">
                   <div className="relative">
                     <Avatar className="h-8 w-8 ring-2 ring-primary/20">

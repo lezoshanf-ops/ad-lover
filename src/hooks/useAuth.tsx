@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let profileDeletionChannel: ReturnType<typeof supabase.channel> | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -42,10 +44,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             fetchUserData(session.user.id);
           }, 0);
+
+          // Listen for profile deletion to auto-logout
+          if (profileDeletionChannel) {
+            supabase.removeChannel(profileDeletionChannel);
+          }
+          profileDeletionChannel = supabase
+            .channel('profile-deletion-listener')
+            .on('postgres_changes', {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `user_id=eq.${session.user.id}`
+            }, () => {
+              // Profile was deleted - force logout
+              console.log('Profile deleted, forcing logout');
+              supabase.auth.signOut();
+            })
+            .subscribe();
         } else {
           setProfile(null);
           setRole(null);
           setLoading(false);
+          
+          // Clean up profile deletion listener
+          if (profileDeletionChannel) {
+            supabase.removeChannel(profileDeletionChannel);
+            profileDeletionChannel = null;
+          }
         }
       }
     );
@@ -101,7 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (profileDeletionChannel) {
+        supabase.removeChannel(profileDeletionChannel);
+      }
+    };
   }, []);
 
   const fetchUserData = async (userId: string) => {

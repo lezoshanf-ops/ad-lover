@@ -120,10 +120,26 @@ export default function AdminUsersView() {
 
   const handleDeleteUser = async (userId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
     
-    if (error) {
-      toast({ title: 'Fehler', description: 'Benutzer konnte nicht gelöscht werden.', variant: 'destructive' });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({ title: 'Fehler', description: 'Nicht angemeldet.', variant: 'destructive' });
+      return;
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ user_id: userId })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      toast({ title: 'Fehler', description: result.error || 'Benutzer konnte nicht gelöscht werden.', variant: 'destructive' });
     } else {
       toast({ title: 'Erfolg', description: 'Benutzer wurde gelöscht.' });
       fetchUsers();
