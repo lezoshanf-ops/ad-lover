@@ -175,11 +175,11 @@ export default function EmployeeTimeView() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Aktueller Status</span>
-            <Badge className={
-              currentStatus === 'in' ? 'bg-green-500/20 text-green-700 dark:text-green-400' :
-              currentStatus === 'paused' ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' :
-              'bg-gray-500/20 text-gray-700 dark:text-gray-400'
-            }>
+            <Badge className={`hover:bg-current/0 ${
+              currentStatus === 'in' ? 'bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/20' :
+              currentStatus === 'paused' ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20' :
+              'bg-gray-500/20 text-gray-700 dark:text-gray-400 hover:bg-gray-500/20'
+            }`}>
               {currentStatus === 'in' ? 'Eingestempelt' : currentStatus === 'paused' ? 'Pause' : 'Ausgestempelt'}
             </Badge>
           </CardTitle>
