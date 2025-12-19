@@ -170,13 +170,15 @@ export default function EmployeeTasksView() {
   };
 
   const handleAcceptTask = async (taskId: string) => {
-    await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', taskId);
-    await supabase.from('task_assignments').update({ 
-      accepted_at: new Date().toISOString(), 
-      status: 'in_progress' 
-    }).eq('task_id', taskId).eq('user_id', user?.id);
-    toast({ title: 'Auftrag übernommen!', description: 'Du bist jetzt für diesen Auftrag verantwortlich.' });
-    fetchTasks();
+    // Use secure server-side function that properly updates task status
+    const { error } = await supabase.rpc('accept_task', { _task_id: taskId });
+    
+    if (error) {
+      toast({ title: 'Fehler', description: 'Auftrag konnte nicht angenommen werden.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Auftrag übernommen!', description: 'Du bist jetzt für diesen Auftrag verantwortlich.' });
+      fetchTasks();
+    }
   };
 
   const handleReturnTask = async (taskId: string) => {

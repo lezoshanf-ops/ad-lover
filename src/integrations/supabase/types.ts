@@ -349,6 +349,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_task: { Args: { _task_id: string }; Returns: undefined }
+      delete_task: { Args: { _task_id: string }; Returns: undefined }
       get_user_profile: {
         Args: { _user_id: string }
         Returns: {
