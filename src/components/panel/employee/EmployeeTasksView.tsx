@@ -249,27 +249,17 @@ export default function EmployeeTasksView() {
     }
     
     const notes = progressNotes[task.id] || '';
-    await supabase.from('tasks').update({ status: 'completed' }).eq('id', task.id);
-    await supabase.from('task_assignments').update({ 
-      status: 'completed', 
-      progress_notes: notes 
-    }).eq('task_id', task.id).eq('user_id', user?.id);
-
-    // Get employee profile to include in notification
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('user_id', user?.id)
-      .single();
-
-    const employeeName = profile ? `${profile.first_name} ${profile.last_name}` : 'Ein Mitarbeiter';
-
-    // Use secure database function to notify admins (bypasses RLS with SECURITY DEFINER)
-    await supabase.rpc('notify_admins_task_completed', {
+    
+    // Use secure database function to complete task (handles status update + admin notification)
+    const { error } = await supabase.rpc('complete_task', {
       _task_id: task.id,
-      _task_title: task.title,
-      _employee_name: employeeName
+      _progress_notes: notes || null
     });
+
+    if (error) {
+      toast({ title: 'Fehler', description: 'Auftrag konnte nicht abgeschlossen werden.', variant: 'destructive' });
+      return;
+    }
     
     // Show completion dialog with stats and praise
     setCompletionDialog({

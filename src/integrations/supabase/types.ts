@@ -394,6 +394,10 @@ export type Database = {
     }
     Functions: {
       accept_task: { Args: { _task_id: string }; Returns: undefined }
+      complete_task: {
+        Args: { _progress_notes?: string; _task_id: string }
+        Returns: undefined
+      }
       delete_task: { Args: { _task_id: string }; Returns: undefined }
       get_user_profile: {
         Args: { _user_id: string }
