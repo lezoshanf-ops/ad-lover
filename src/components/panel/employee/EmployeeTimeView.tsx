@@ -154,6 +154,21 @@ export default function EmployeeTimeView() {
       };
       toast({ title: 'Erfolg', description: messages[type] });
       fetchEntries();
+
+      // Notify admins for check_in and check_out (fire and forget)
+      if (type === 'check_in' || type === 'check_out') {
+        supabase.from('profiles').select('first_name, last_name').eq('user_id', user.id).maybeSingle()
+          .then(({ data: profileData }) => {
+            const employeeName = profileData 
+              ? `${profileData.first_name} ${profileData.last_name}`.trim() || 'Ein Mitarbeiter'
+              : 'Ein Mitarbeiter';
+            supabase.rpc('notify_admins_activity', {
+              _activity_type: type,
+              _employee_name: employeeName,
+              _employee_id: user.id
+            });
+          });
+      }
     }
   };
 

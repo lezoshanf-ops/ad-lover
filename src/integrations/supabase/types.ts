@@ -439,6 +439,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      notify_admins_activity: {
+        Args: {
+          _activity_type: string
+          _employee_id: string
+          _employee_name: string
+        }
+        Returns: undefined
+      }
       notify_admins_task_completed: {
         Args: { _employee_name: string; _task_id: string; _task_title: string }
         Returns: undefined

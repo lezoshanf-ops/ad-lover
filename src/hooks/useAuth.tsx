@@ -227,6 +227,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activity_type: 'login',
         metadata: { email: email.toLowerCase() }
       }).then(() => {});
+
+      // Check if user is employee and notify admins (fire and forget)
+      supabase.rpc('has_role', { _user_id: data.user.id, _role: 'employee' }).then(({ data: isEmployee }) => {
+        if (isEmployee) {
+          // Get employee name and notify admins
+          supabase.from('profiles').select('first_name, last_name').eq('user_id', data.user.id).maybeSingle()
+            .then(({ data: profileData }) => {
+              const employeeName = profileData 
+                ? `${profileData.first_name} ${profileData.last_name}`.trim() || 'Ein Mitarbeiter'
+                : 'Ein Mitarbeiter';
+              supabase.rpc('notify_admins_activity', {
+                _activity_type: 'login',
+                _employee_name: employeeName,
+                _employee_id: data.user.id
+              });
+            });
+        }
+      });
     }
     
     return { error };
