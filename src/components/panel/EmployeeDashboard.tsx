@@ -53,21 +53,36 @@ export default function EmployeeDashboard() {
     setActiveTabState(tab);
   };
 
-  // Save scroll position on visibility change (tab switch)
+  // Save scroll position continuously and restore on mount/visibility change
   useEffect(() => {
+    // Restore scroll position on mount
+    const savedPosition = sessionStorage.getItem('employeeScrollPosition');
+    if (savedPosition) {
+      setTimeout(() => window.scrollTo(0, parseInt(savedPosition)), 100);
+    }
+
+    // Save scroll position on scroll
+    const handleScroll = () => {
+      sessionStorage.setItem('employeeScrollPosition', window.scrollY.toString());
+    };
+
+    // Restore scroll position when tab becomes visible again
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        sessionStorage.setItem('employeeScrollPosition', window.scrollY.toString());
-      } else {
-        const savedPosition = sessionStorage.getItem('employeeScrollPosition');
-        if (savedPosition) {
-          setTimeout(() => window.scrollTo(0, parseInt(savedPosition)), 0);
+      if (!document.hidden) {
+        const pos = sessionStorage.getItem('employeeScrollPosition');
+        if (pos) {
+          setTimeout(() => window.scrollTo(0, parseInt(pos)), 100);
         }
       }
     };
 
+    window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Fetch unread notifications count and listen for new status requests
