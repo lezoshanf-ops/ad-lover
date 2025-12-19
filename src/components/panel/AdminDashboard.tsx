@@ -28,10 +28,10 @@ export default function AdminDashboard() {
 
   // Save scroll position continuously and restore on mount/visibility change
   useEffect(() => {
-    // Restore scroll position on mount
+    // Restore scroll position on mount with smooth behavior
     const savedPosition = sessionStorage.getItem('adminScrollPosition');
     if (savedPosition) {
-      setTimeout(() => window.scrollTo(0, parseInt(savedPosition)), 100);
+      setTimeout(() => window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' }), 100);
     }
 
     // Save scroll position on scroll
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       if (!document.hidden) {
         const pos = sessionStorage.getItem('adminScrollPosition');
         if (pos) {
-          setTimeout(() => window.scrollTo(0, parseInt(pos)), 100);
+          setTimeout(() => window.scrollTo({ top: parseInt(pos), behavior: 'smooth' }), 100);
         }
       }
     };
