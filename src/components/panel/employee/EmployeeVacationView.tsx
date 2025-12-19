@@ -166,7 +166,7 @@ export default function EmployeeVacationView() {
                         {format(new Date(request.start_date), 'dd.MM.yyyy', { locale: de })} - {format(new Date(request.end_date), 'dd.MM.yyyy', { locale: de })}
                       </CardTitle>
                     </div>
-                    <Badge className={statusColors[request.status]}>
+                    <Badge variant="status" className={statusColors[request.status]}>
                       {statusLabels[request.status]}
                     </Badge>
                   </div>

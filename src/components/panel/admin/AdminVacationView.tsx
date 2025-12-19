@@ -121,7 +121,7 @@ export default function AdminVacationView() {
                           <span className="ml-2">({days} {days === 1 ? 'Tag' : 'Tage'})</span>
                         </p>
                       </div>
-                      <Badge className={statusColors.pending}>
+                      <Badge variant="status" className={statusColors.pending}>
                         {statusLabels.pending}
                       </Badge>
                     </div>
@@ -166,7 +166,7 @@ export default function AdminVacationView() {
                         ({days} {days === 1 ? 'Tag' : 'Tage'})
                       </p>
                     </div>
-                    <Badge className={statusColors[request.status]}>
+                    <Badge variant="status" className={statusColors[request.status]}>
                       {statusLabels[request.status]}
                     </Badge>
                   </div>
