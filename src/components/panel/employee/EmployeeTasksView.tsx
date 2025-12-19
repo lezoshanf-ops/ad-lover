@@ -361,14 +361,27 @@ export default function EmployeeTasksView() {
                       )}
                     </div>
                   </div>
-                  {task.assignedBy && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 rounded-lg text-sm">
-                      <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-emerald-700 dark:text-emerald-400">
-                        Zugewiesen von {task.assignedBy.first_name}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 rounded-lg text-sm">
+                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Abgabefrist</p>
+                          <span className="font-semibold text-amber-700 dark:text-amber-400">
+                            {format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {task.assignedBy && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 rounded-lg text-sm">
+                        <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          Zugewiesen von {task.assignedBy.first_name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               
@@ -379,17 +392,9 @@ export default function EmployeeTasksView() {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="truncate">{task.customer_name}</span>
-                  </div>
-                  {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}</span>
-                    </div>
-                  )}
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate">{task.customer_name}</span>
                 </div>
 
                 {(task.test_email || task.test_password) && (
