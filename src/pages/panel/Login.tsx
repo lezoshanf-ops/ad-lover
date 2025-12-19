@@ -60,7 +60,7 @@ export default function PanelLogin() {
           <div className="flex justify-center">
             <img src={logo} alt="Fritze IT" className="h-16" />
           </div>
-          <CardTitle className="text-2xl font-bold">Team-Panel</CardTitle>
+          <CardTitle className="text-2xl font-bold">Mitarbeiter-Login</CardTitle>
           <CardDescription>
             Melden Sie sich mit Ihren Zugangsdaten an
           </CardDescription>
