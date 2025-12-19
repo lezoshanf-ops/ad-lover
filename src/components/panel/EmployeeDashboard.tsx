@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, ClipboardList, Clock, FileText, Calendar, User, MessageCircle, Menu, X, Bell } from 'lucide-react';
+import { LogOut, ClipboardList, Clock, FileText, Calendar, User, Menu, X, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import EmployeeTasksView from './employee/EmployeeTasksView';
@@ -12,11 +12,8 @@ import EmployeeTimeView from './employee/EmployeeTimeView';
 import EmployeeDocumentsView from './employee/EmployeeDocumentsView';
 import EmployeeVacationView from './employee/EmployeeVacationView';
 import EmployeeProfileView from './employee/EmployeeProfileView';
-import EmployeeChatView from './employee/EmployeeChatView';
 import EmployeeNotificationsView from './employee/EmployeeNotificationsView';
 import { StatusSelector } from './StatusSelector';
-import { InboxButton } from './InboxButton';
-import { TelegramToast } from './TelegramToast';
 import { cn } from '@/lib/utils';
 
 // Context to share tab navigation with optional pending task
@@ -28,21 +25,12 @@ interface TabContextValue {
 export const TabContext = createContext<TabContextValue | null>(null);
 export const useTabContext = () => useContext(TabContext);
 
-interface NotificationData {
-  id: string;
-  senderName: string;
-  senderAvatar?: string;
-  senderInitials: string;
-  message: string;
-}
-
 const menuItems = [
   { id: 'tasks', label: 'Aufträge', icon: ClipboardList },
   { id: 'time', label: 'Zeiterfassung', icon: Clock },
   { id: 'documents', label: 'Dokumente', icon: FileText },
   { id: 'vacation', label: 'Urlaub', icon: Calendar },
   { id: 'notifications', label: 'Benachrichtigungen', icon: Bell },
-  { id: 'chat', label: 'Nachrichten', icon: MessageCircle },
   { id: 'profile', label: 'Profil', icon: User },
 ];
 
@@ -52,7 +40,6 @@ export default function EmployeeDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userStatus, setUserStatus] = useState<'online' | 'away' | 'busy' | 'offline'>('offline');
-  const [notification, setNotification] = useState<NotificationData | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
@@ -130,47 +117,6 @@ export default function EmployeeDashboard() {
     };
   }, [profile?.user_id]);
 
-  // Listen for new chat messages - Telegram-style notification
-  useEffect(() => {
-    if (!user) return;
-
-    const chatChannel = supabase
-      .channel('employee-chat-notifications')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'chat_messages'
-      }, async (payload) => {
-        if (payload.new.recipient_id === user.id && !payload.new.is_group_message && !payload.new.read_at) {
-          // Fetch sender info for Telegram-style toast
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, avatar_url')
-            .eq('user_id', payload.new.sender_id)
-            .single();
-
-          if (senderData) {
-            const avatarUrl = senderData.avatar_url 
-              ? supabase.storage.from('avatars').getPublicUrl(senderData.avatar_url).data.publicUrl
-              : undefined;
-              
-            setNotification({
-              id: payload.new.id,
-              senderName: `${senderData.first_name} ${senderData.last_name}`,
-              senderAvatar: avatarUrl,
-              senderInitials: `${senderData.first_name?.[0] || ''}${senderData.last_name?.[0] || ''}`,
-              message: payload.new.message || (payload.new.image_url ? '📷 Bild' : '')
-            });
-          }
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(chatChannel);
-    };
-  }, [user]);
-
   const handleSignOut = async () => {
     // Set status to offline
     if (profile?.user_id) {
@@ -188,10 +134,6 @@ export default function EmployeeDashboard() {
     setActiveTab('tasks');
   };
 
-  const handleNotificationClick = () => {
-    setActiveTab('chat');
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case 'tasks': return <EmployeeTasksView />;
@@ -199,7 +141,6 @@ export default function EmployeeDashboard() {
       case 'documents': return <EmployeeDocumentsView />;
       case 'vacation': return <EmployeeVacationView />;
       case 'notifications': return <EmployeeNotificationsView />;
-      case 'chat': return <EmployeeChatView />;
       case 'profile': return <EmployeeProfileView />;
       default: return <EmployeeTasksView />;
     }
@@ -311,7 +252,6 @@ export default function EmployeeDashboard() {
 
               <div className="flex items-center gap-2">
                 <StatusSelector />
-                <InboxButton onClick={() => setActiveTab('chat')} />
                 <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-full">
                   <div className="relative">
                     <Avatar className="h-8 w-8 ring-2 ring-primary/20">
@@ -354,18 +294,6 @@ export default function EmployeeDashboard() {
           />
         )}
       </div>
-      
-      {/* Telegram-style notification */}
-      {notification && (
-        <TelegramToast
-          senderName={notification.senderName}
-          senderAvatar={notification.senderAvatar}
-          senderInitials={notification.senderInitials}
-          message={notification.message}
-          onClose={() => setNotification(null)}
-          onClick={handleNotificationClick}
-        />
-      )}
     </TabContext.Provider>
   );
 }
