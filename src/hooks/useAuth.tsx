@@ -50,7 +50,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('getSession error:', error);
+
+        // Common in dev when storage is stale; avoid endless refresh loops
+        const anyErr = error as any;
+        const isRefreshTokenInvalid =
+          anyErr?.code === 'refresh_token_not_found' ||
+          /refresh token/i.test(anyErr?.message || '');
+
+        if (isRefreshTokenInvalid) {
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const key = localStorage.key(i);
+              if (key && /^sb-.*-auth-token$/.test(key)) {
+                localStorage.removeItem(key);
+              }
+            }
+          } catch {
+            // ignore
+          }
+
+          supabase.auth.signOut();
+        }
+
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
 

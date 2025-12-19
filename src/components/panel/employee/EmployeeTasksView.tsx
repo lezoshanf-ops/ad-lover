@@ -131,14 +131,38 @@ export default function EmployeeTasksView() {
   
   // Track if initial load is complete to avoid notifications on page load
   const initialLoadComplete = useRef(false);
-  const previousTaskCount = useRef<number>(0);
-
+  const realtimeSubscribed = useRef(false);
+  const pollingIntervalId = useRef<number | null>(null);
+  const pollingTimeoutId = useRef<number | null>(null);
   // Request push notification permission on mount
   useEffect(() => {
     if (permission === 'default') {
       requestPermission();
     }
   }, [permission, requestPermission]);
+
+  // Keep screen in sync when returning to the tab/window
+  useEffect(() => {
+    if (!user) return;
+
+    const syncNow = () => {
+      fetchTasks();
+      fetchStatusRequests();
+      checkTimeStatus();
+    };
+
+    const onVisibility = () => {
+      if (!document.hidden) syncNow();
+    };
+
+    window.addEventListener('focus', syncNow);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('focus', syncNow);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [user]);
 
   // Check if user is currently checked in
   const checkTimeStatus = async () => {
@@ -195,21 +219,49 @@ export default function EmployeeTasksView() {
       fetchStatusRequests();
       checkTimeStatus();
 
+      // Reset fallback timers
+      realtimeSubscribed.current = false;
+      if (pollingIntervalId.current) {
+        window.clearInterval(pollingIntervalId.current);
+        pollingIntervalId.current = null;
+      }
+      if (pollingTimeoutId.current) {
+        window.clearTimeout(pollingTimeoutId.current);
+        pollingTimeoutId.current = null;
+      }
+
+      const startPollingFallback = () => {
+        if (pollingIntervalId.current) return;
+        console.warn('[Realtime] Fallback polling enabled');
+        pollingIntervalId.current = window.setInterval(() => {
+          fetchTasks();
+          fetchStatusRequests();
+        }, 1500);
+      };
+
+      // If subscription doesn’t reach SUBSCRIBED quickly (e.g. WS blocked), enable polling.
+      pollingTimeoutId.current = window.setTimeout(() => {
+        if (!realtimeSubscribed.current) startPollingFallback();
+      }, 5000);
+
       // Subscribe to realtime changes - no filters, RLS handles security
       // Filters with UPDATE events can be unreliable, so we fetch and let RLS filter
       const channel = supabase
         .channel(`employee-tasks-${user.id}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'task_assignments'
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'task_assignments',
         }, (payload) => {
           console.log('[Realtime] task_assignments INSERT', payload);
           const newData = payload.new as Record<string, unknown> | null;
           // New task assigned to current user
           if (newData?.user_id === user.id && initialLoadComplete.current) {
-            // Fetch task title for notification
-            supabase.from('tasks').select('title').eq('id', newData.task_id as string).single()
+            supabase
+              .from('tasks')
+              .select('title')
+              .eq('id', newData.task_id as string)
+              .single()
               .then(({ data: taskData }) => {
                 notifyNewTask(taskData?.title);
               });
@@ -218,10 +270,10 @@ export default function EmployeeTasksView() {
             fetchTasks();
           }
         })
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'task_assignments'
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'task_assignments',
         }, (payload) => {
           console.log('[Realtime] task_assignments UPDATE', payload);
           const newData = payload.new as Record<string, unknown> | null;
@@ -230,10 +282,10 @@ export default function EmployeeTasksView() {
             fetchTasks();
           }
         })
-        .on('postgres_changes', { 
-          event: 'DELETE', 
-          schema: 'public', 
-          table: 'task_assignments'
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'task_assignments',
         }, (payload) => {
           console.log('[Realtime] task_assignments DELETE', payload);
           const oldData = payload.old as Record<string, unknown> | null;
@@ -241,10 +293,10 @@ export default function EmployeeTasksView() {
             fetchTasks();
           }
         })
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'sms_code_requests'
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'sms_code_requests',
         }, (payload) => {
           console.log('[Realtime] sms_code_requests changed', payload);
           const newData = payload.new as Record<string, unknown> | null;
@@ -252,25 +304,30 @@ export default function EmployeeTasksView() {
           // Only process if this affects current user
           if (newData?.user_id === user.id || oldData?.user_id === user.id) {
             // Show notification when SMS code is received
-            if (payload.eventType === 'UPDATE' && newData?.sms_code && !oldData?.sms_code && initialLoadComplete.current) {
+            if (
+              payload.eventType === 'UPDATE' &&
+              newData?.sms_code &&
+              !oldData?.sms_code &&
+              initialLoadComplete.current
+            ) {
               notifySmsCode();
             }
             fetchTasks();
           }
         })
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'tasks'
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
         }, (payload) => {
           console.log('[Realtime] tasks changed', payload);
           // Always refetch - RLS will filter appropriately
           fetchTasks();
         })
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'notifications'
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
         }, (payload) => {
           console.log('[Realtime] notifications changed', payload);
           const newData = payload.new as Record<string, unknown> | null;
@@ -279,10 +336,10 @@ export default function EmployeeTasksView() {
             fetchStatusRequests();
           }
         })
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'time_entries'
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
         }, (payload) => {
           console.log('[Realtime] time_entries changed', payload);
           const newData = payload.new as Record<string, unknown> | null;
@@ -293,15 +350,34 @@ export default function EmployeeTasksView() {
         })
         .subscribe((status) => {
           console.log('[Realtime] Subscription status:', status);
+
           if (status === 'SUBSCRIBED') {
+            realtimeSubscribed.current = true;
+            if (pollingIntervalId.current) {
+              window.clearInterval(pollingIntervalId.current);
+              pollingIntervalId.current = null;
+            }
+
             // Mark initial load as complete after a short delay
             setTimeout(() => {
               initialLoadComplete.current = true;
             }, 1000);
           }
+
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            startPollingFallback();
+          }
         });
 
       return () => {
+        if (pollingIntervalId.current) {
+          window.clearInterval(pollingIntervalId.current);
+          pollingIntervalId.current = null;
+        }
+        if (pollingTimeoutId.current) {
+          window.clearTimeout(pollingTimeoutId.current);
+          pollingTimeoutId.current = null;
+        }
         supabase.removeChannel(channel);
       };
     }
