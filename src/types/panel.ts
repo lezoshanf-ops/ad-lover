@@ -115,3 +115,15 @@ export interface SmsCodeRequest {
   task?: Task;
   profile?: Profile;
 }
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  related_task_id: string | null;
+  related_user_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}

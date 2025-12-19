@@ -9,7 +9,7 @@ import AdminSmsView from './admin/AdminSmsView';
 import AdminVacationView from './admin/AdminVacationView';
 import AdminStatsView from './admin/AdminStatsView';
 import AdminChatView from './admin/AdminChatView';
-import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, MessageCircle } from 'lucide-react';
+import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, MessageCircle, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { InboxButton } from './InboxButton';
 import { StatusSelector } from './StatusSelector';
@@ -24,11 +24,21 @@ interface NotificationData {
   message: string;
 }
 
+interface TaskNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  related_task_id: string | null;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
   const [pendingSmsCount, setPendingSmsCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notification, setNotification] = useState<NotificationData | null>(null);
+  const [taskNotification, setTaskNotification] = useState<TaskNotification | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -104,9 +114,36 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
+    // Listen for task completion notifications
+    const notificationsChannel = supabase
+      .channel('admin-task-notifications')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'notifications'
+      }, (payload) => {
+        if (user && payload.new.user_id === user.id && payload.new.type === 'task_completed') {
+          setTaskNotification({
+            id: payload.new.id,
+            title: payload.new.title,
+            message: payload.new.message,
+            type: payload.new.type,
+            related_task_id: payload.new.related_task_id,
+            created_at: payload.new.created_at
+          });
+          
+          toast({
+            title: payload.new.title,
+            description: payload.new.message,
+          });
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(smsChannel);
       supabase.removeChannel(chatChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, [user]);
 

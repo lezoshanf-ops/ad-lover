@@ -254,6 +254,34 @@ export default function EmployeeTasksView() {
       status: 'completed', 
       progress_notes: notes 
     }).eq('task_id', task.id).eq('user_id', user?.id);
+
+    // Get employee profile to include in notification
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('user_id', user?.id)
+      .single();
+
+    const employeeName = profile ? `${profile.first_name} ${profile.last_name}` : 'Ein Mitarbeiter';
+
+    // Get all admin user IDs and create notifications for them
+    const { data: adminRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+
+    if (adminRoles && adminRoles.length > 0) {
+      const notifications = adminRoles.map(admin => ({
+        user_id: admin.user_id,
+        title: 'Auftrag abgeschlossen',
+        message: `${employeeName} hat den Auftrag "${task.title}" abgegeben.`,
+        type: 'task_completed',
+        related_task_id: task.id,
+        related_user_id: user?.id
+      }));
+
+      await supabase.from('notifications').insert(notifications);
+    }
     
     // Show completion dialog with stats and praise
     setCompletionDialog({
