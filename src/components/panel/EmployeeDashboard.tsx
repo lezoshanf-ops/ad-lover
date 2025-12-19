@@ -227,7 +227,7 @@ export default function EmployeeDashboard() {
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-all"
               onClick={handleLogoClick}
             >
-              <img src={logo} alt="Logo" className="h-12 w-auto" />
+              <img src={logo} alt="Logo" className="h-12 w-auto dark:brightness-0 dark:invert" />
               {sidebarOpen && (
                 <span className="font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Mitarbeiter</span>
               )}
