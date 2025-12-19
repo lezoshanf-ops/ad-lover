@@ -495,7 +495,7 @@ export default function AdminTasksView() {
                               const { error } = await supabase.from('notifications').insert({
                                 user_id: assignment.user_id,
                                 title: 'Statusanfrage',
-                                message: `Der Admin bittet um ein kurzes Update zum Auftrag "${task.title}".`,
+                                message: `Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt des Auftrags "${task.title}". Gehe dazu auf den Auftrag und trage deinen Fortschritt in das Notizfeld ein.`,
                                 type: 'status_request',
                                 related_task_id: task.id
                               });

@@ -157,7 +157,7 @@ export default function EmployeeNotificationsView() {
                               </Badge>
                             )}
                           </div>
-                          <p className={`text-sm mt-1 ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          <p className={`text-sm mt-1 whitespace-pre-wrap ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {notification.message}
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
