@@ -10,7 +10,8 @@ import AdminVacationView from './admin/AdminVacationView';
 import AdminStatsView from './admin/AdminStatsView';
 import AdminActivityView from './admin/AdminActivityView';
 import AdminChatView from './admin/AdminChatView';
-import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, Activity, LayoutDashboard, MessageCircle, Settings } from 'lucide-react';
+import AdminEvaluationsView from './admin/AdminEvaluationsView';
+import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, Activity, LayoutDashboard, MessageCircle, Settings, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -149,6 +150,7 @@ export default function AdminDashboard() {
     {
       title: 'VERWALTUNG',
       items: [
+        { id: 'evaluations', label: 'Bewertungen', icon: ClipboardCheck },
         { id: 'stats', label: 'Statistiken', icon: BarChart3 },
         { id: 'settings', label: 'Einstellungen', icon: Settings },
       ],
@@ -171,6 +173,8 @@ export default function AdminDashboard() {
         return <AdminVacationView />;
       case 'stats':
         return <AdminStatsView />;
+      case 'evaluations':
+        return <AdminEvaluationsView />;
       case 'chat':
         return <AdminChatView />;
       case 'settings':

@@ -128,6 +128,7 @@ export default function EmployeeTasksView() {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<TaskWithDetails | null>(null);
+  const [dialogViewMode, setDialogViewMode] = useState<'details' | 'workflow'>('details');
   const [completionDialog, setCompletionDialog] = useState<{
     open: boolean;
     task: TaskWithDetails | null;
@@ -557,8 +558,13 @@ export default function EmployeeTasksView() {
   ) => {
     const current = getWorkflowStep(task);
 
-    // strict chronological progression (allow same step re-save)
-    if (nextStep !== current && nextStep !== current + 1) {
+    // Allow going back or forward by 1
+    if (nextStep < 1 || nextStep > 8) {
+      return;
+    }
+
+    // Only enforce forward progression for nextStep > current
+    if (nextStep > current && nextStep !== current + 1) {
       toast({
         title: 'Reihenfolge beachten',
         description: 'Bitte bearbeite die Schritte strikt der Reihe nach (1 bis 8).',
@@ -568,6 +574,13 @@ export default function EmployeeTasksView() {
     }
 
     await updateWorkflow(task.id, { workflow_step: nextStep, ...extra });
+  };
+
+  const handleGoBackStep = async (task: TaskWithDetails) => {
+    const currentStep = getWorkflowStep(task);
+    if (currentStep > 1) {
+      await updateWorkflow(task.id, { workflow_step: currentStep - 1 });
+    }
   };
 
   const handlePrimaryStepAction = async (task: TaskWithDetails) => {
@@ -819,7 +832,10 @@ export default function EmployeeTasksView() {
                     <Button 
                       variant="outline" 
                       className="flex-1 gap-2"
-                      onClick={() => setSelectedTask(task)}
+                      onClick={() => {
+                        setDialogViewMode('details');
+                        setSelectedTask(task);
+                      }}
                     >
                       <FileText className="h-4 w-4" />
                       Details
@@ -844,7 +860,10 @@ export default function EmployeeTasksView() {
                     ) : task.assignment?.accepted_at && task.status !== 'completed' ? (
                       <Button 
                         className="flex-1 gap-2"
-                        onClick={() => setSelectedTask(task)}
+                        onClick={() => {
+                          setDialogViewMode('workflow');
+                          setSelectedTask(task);
+                        }}
                       >
                         <ArrowRight className="h-4 w-4" />
                         Fortsetzen
@@ -863,123 +882,87 @@ export default function EmployeeTasksView() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedTask && (
             <>
-              {(() => {
-                const currentStep = getWorkflowStep(selectedTask);
-                const steps = getTaskSteps(selectedTask);
+              {dialogViewMode === 'details' ? (
+                // DETAILS VIEW - Shows task information
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
+                    <DialogDescription>
+                      Auftragsdetails und Informationen
+                    </DialogDescription>
+                  </DialogHeader>
 
-                return (
-                  <>
-                    <DialogHeader>
-                      <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
-                      <DialogDescription className="flex items-center gap-2">
-                        <span className="flex items-center gap-1">
-                          Schritt {currentStep} von 8
-                        </span>
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    {/* Progress indicator */}
-                    <div className="flex gap-1 mb-6">
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
-                        const isDone = step < currentStep;
-                        const isActive = step === currentStep;
-                        return (
-                          <div
-                            key={step}
-                            className={cn(
-                              'flex-1 h-2 rounded-full transition-colors',
-                              isDone ? 'bg-primary' : isActive ? 'bg-primary/60' : 'bg-muted'
-                            )}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Workflow steps */}
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
-                      <div className="space-y-2">
-                        {steps.map((step) => {
-                          const isDone = step.number < currentStep;
-                          const isActive = step.number === currentStep;
-
-                          return (
-                            <div
-                              key={step.number}
-                              className={cn(
-                                'flex gap-4 p-4 rounded-lg border transition-colors',
-                                isActive
-                                  ? 'bg-primary/5 border-primary/20'
-                                  : 'bg-muted/50 border-border/50'
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold',
-                                  isDone
-                                    ? 'bg-primary text-primary-foreground'
-                                    : isActive
-                                      ? 'bg-primary/15 text-primary'
-                                      : 'bg-muted-foreground/15 text-muted-foreground'
-                                )}
-                              >
-                                {step.number}
-                              </div>
-                              <div className="flex-1">
-                                <h4 className={cn('font-medium mb-1', isActive && 'text-primary')}>{step.title}</h4>
-                                <p className="text-sm text-muted-foreground">{step.description}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
+                  <div className="space-y-6">
+                    {/* Task Info */}
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">Kunde:</span>
+                          <span className="text-sm">{selectedTask.customer_name}</span>
+                        </div>
+                        {selectedTask.customer_phone && (
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Telefon:</span>
+                            <span className="text-sm">{selectedTask.customer_phone}</span>
+                          </div>
+                        )}
+                        {selectedTask.deadline && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Deadline:</span>
+                            <span className="text-sm">{format(new Date(selectedTask.deadline), 'dd.MM.yyyy', { locale: de })}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={priorityConfig[selectedTask.priority].color}>
+                            {priorityConfig[selectedTask.priority].label}
+                          </Badge>
+                          <Badge variant="outline" className={statusConfig[selectedTask.status].color}>
+                            {statusConfig[selectedTask.status].label}
+                          </Badge>
+                        </div>
+                        {selectedTask.special_compensation && (
+                          <div className="flex items-center gap-2">
+                            <Euro className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Sondervergütung:</span>
+                            <span className="text-sm">{selectedTask.special_compensation}€</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Bewertungsbogen Hinweis (Step 2) */}
-                    {currentStep === 2 && (
-                      <div className="mt-6 p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
-                        <h4 className="font-medium mb-2 text-amber-800 dark:text-amber-300">Bewertungsbogen ausfüllen</h4>
-                        <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
-                          Bitte gehe zum Tab „Bewertungsbögen", um deine strukturierte Bewertung für diesen Auftrag einzutragen.
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            if (tabContext) {
-                              tabContext.setActiveTab('evaluations');
-                            }
-                          }}
-                          className="gap-2"
-                        >
-                          Zum Bewertungsbogen
-                        </Button>
+                    {/* Description */}
+                    {selectedTask.description && (
+                      <div>
+                        <h4 className="font-medium mb-2">Beschreibung</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedTask.description}</p>
                       </div>
                     )}
 
-                    {/* Video Chat Status Section */}
-                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                      <h4 className="font-medium mb-3">Video-Chat Status</h4>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Video className="h-5 w-5 text-primary" />
+                    {/* Web Ident URL */}
+                    {selectedTask.web_ident_url && (
+                      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Globe className="h-4 w-4 text-primary" />
+                          <span className="font-medium">Webseite</span>
                         </div>
-                        <div>
-                          <p className="font-medium">Video Beratung</p>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span className="text-muted-foreground">
-                              {(selectedTask.assignment as any)?.workflow_digital === true
-                                ? 'Digitaler Ablauf gewählt'
-                                : (selectedTask.assignment as any)?.workflow_digital === false
-                                  ? 'Abgelehnt'
-                                  : 'Noch nicht entschieden'}
-                            </span>
-                          </div>
-                        </div>
+                        <a 
+                          href={selectedTask.web_ident_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline flex items-center gap-1"
+                        >
+                          {selectedTask.web_ident_url}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Task credentials if any */}
+                    {/* Test credentials */}
                     {(selectedTask.test_email || selectedTask.test_password) && (
                       <div className="p-4 bg-info/10 rounded-lg border border-info/20">
                         <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
@@ -1002,88 +985,273 @@ export default function EmployeeTasksView() {
                       </div>
                     )}
 
-                    {/* SMS Code display */}
-                    {selectedTask.smsRequest?.sms_code && (
-                      <SmsCodeDisplay
-                        smsCode={selectedTask.smsRequest.sms_code}
-                        onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
-                        isResending={resendingCode === selectedTask.id}
-                      />
+                    {/* Notes */}
+                    {selectedTask.notes && (
+                      <div>
+                        <h4 className="font-medium mb-2">Notizen vom Admin</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedTask.notes}</p>
+                      </div>
                     )}
 
-                    {/* Progress notes */}
-                    <div className="space-y-3">
-                      <Textarea
-                        placeholder="Fortschritt und Notizen hier eingeben..."
-                        value={progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || ''}
-                        onChange={(e) => setProgressNotes({ ...progressNotes, [selectedTask.id]: e.target.value })}
-                        className="min-h-[100px]"
-                      />
-                    </div>
+                    {/* Assigned by */}
+                    {selectedTask.assignedBy && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <UserCheck className="h-4 w-4" />
+                        Zugewiesen von: {selectedTask.assignedBy.first_name} {selectedTask.assignedBy.last_name}
+                      </div>
+                    )}
+                  </div>
 
-               {/* Action buttons */}
-               <div className="flex flex-wrap gap-3 pt-4 border-t">
-                 <Button variant="outline" onClick={() => setSelectedTask(null)}>
-                   ← Zurück
-                 </Button>
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-3 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setSelectedTask(null)}>
+                      Schließen
+                    </Button>
 
-                 <div className="flex-1" />
+                    <div className="flex-1" />
 
-                 {selectedTask.status === 'assigned' && !selectedTask.assignment?.accepted_at && isCheckedIn && (
-                   <Button
-                     onClick={async () => {
-                       await handleAcceptTask(selectedTask.id);
-                       // ensure we start at step 1
-                       await updateWorkflow(selectedTask.id, { workflow_step: 1, workflow_digital: null });
-                     }}
-                   >
-                     Auftrag annehmen
-                   </Button>
-                 )}
+                    {selectedTask.assignment?.accepted_at && selectedTask.status !== 'completed' && (
+                      <Button
+                        className="gap-2"
+                        onClick={() => setDialogViewMode('workflow')}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Auftragsschritte
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                // WORKFLOW VIEW - Shows steps
+                (() => {
+                  const currentStep = getWorkflowStep(selectedTask);
+                  const steps = getTaskSteps(selectedTask);
 
-                 {selectedTask.assignment?.accepted_at && (
-                   <>
-                     <Button
-                       variant="outline"
-                       onClick={() => handleGoToDocuments(selectedTask.id)}
-                       className="gap-2"
-                     >
-                       <FileUp className="h-4 w-4" />
-                       Dokumente
-                     </Button>
+                  return (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
+                        <DialogDescription className="flex items-center gap-2">
+                          <span className="flex items-center gap-1">
+                            Schritt {currentStep} von 8
+                          </span>
+                        </DialogDescription>
+                      </DialogHeader>
 
-                     <Button
-                       className="gap-2"
-                       onClick={() => handlePrimaryStepAction(selectedTask)}
-                     >
-                       {(() => {
-                         const step = getWorkflowStep(selectedTask);
-                         if (step === 3) return 'Weiter (Entscheidung)';
-                         if (step === 4) return selectedTask.smsRequest?.sms_code ? 'Weiter' : 'Demo-Daten anfordern / prüfen';
-                         if (step === 5) return 'Videochat erledigt → weiter';
-                         if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
-                         if (step === 8) return 'Auftrag abschließen';
-                         return 'Weiter';
-                       })()}
-                       <ArrowRight className="h-4 w-4" />
-                     </Button>
+                      {/* Progress indicator */}
+                      <div className="flex gap-1 mb-6">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
+                          const isDone = step < currentStep;
+                          const isActive = step === currentStep;
+                          return (
+                            <div
+                              key={step}
+                              className={cn(
+                                'flex-1 h-2 rounded-full transition-colors',
+                                isDone ? 'bg-primary' : isActive ? 'bg-primary/60' : 'bg-muted'
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
 
-                     {/* Safety: keep explicit completion button only on step 8 */}
-                     {getWorkflowStep(selectedTask) === 8 && (taskDocuments[selectedTask.id] || 0) > 0 ? (
-                       <Button
-                         onClick={() => handleCompleteTask(selectedTask)}
-                         className="gap-2"
-                       >
-                         <CheckCircle2 className="h-4 w-4" />
-                         Abschließen
-                       </Button>
-                     ) : null}
-                   </>
-                 )}
-                </div>
-                  </>
-                );
-              })()}
+                      {/* Workflow steps */}
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
+                        <div className="space-y-2">
+                          {steps.map((step) => {
+                            const isDone = step.number < currentStep;
+                            const isActive = step.number === currentStep;
+
+                            return (
+                              <div
+                                key={step.number}
+                                className={cn(
+                                  'flex gap-4 p-4 rounded-lg border transition-colors',
+                                  isActive
+                                    ? 'bg-primary/5 border-primary/20'
+                                    : 'bg-muted/50 border-border/50'
+                                )}
+                              >
+                                <div
+                                  className={cn(
+                                    'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold',
+                                    isDone
+                                      ? 'bg-primary text-primary-foreground'
+                                      : isActive
+                                        ? 'bg-primary/15 text-primary'
+                                        : 'bg-muted-foreground/15 text-muted-foreground'
+                                  )}
+                                >
+                                  {step.number}
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className={cn('font-medium mb-1', isActive && 'text-primary')}>{step.title}</h4>
+                                  <p className="text-sm text-muted-foreground">{step.description}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Bewertungsbogen Hinweis (Step 2) */}
+                      {currentStep === 2 && (
+                        <div className="mt-6 p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
+                          <h4 className="font-medium mb-2 text-amber-800 dark:text-amber-300">Bewertungsbogen ausfüllen</h4>
+                          <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                            Bitte gehe zum Tab „Bewertungsbögen", um deine strukturierte Bewertung für diesen Auftrag einzutragen.
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              if (tabContext) {
+                                tabContext.setActiveTab('evaluations');
+                              }
+                            }}
+                            className="gap-2"
+                          >
+                            Zum Bewertungsbogen
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Video Chat Status Section */}
+                      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                        <h4 className="font-medium mb-3">Video-Chat Status</h4>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Video className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Video Beratung</p>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              <span className="text-muted-foreground">
+                                {(selectedTask.assignment as any)?.workflow_digital === true
+                                  ? 'Digitaler Ablauf gewählt'
+                                  : (selectedTask.assignment as any)?.workflow_digital === false
+                                    ? 'Abgelehnt'
+                                    : 'Noch nicht entschieden'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Task credentials if any */}
+                      {(selectedTask.test_email || selectedTask.test_password) && (
+                        <div className="p-4 bg-info/10 rounded-lg border border-info/20">
+                          <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
+                            Test-Zugangsdaten
+                          </p>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            {selectedTask.test_email && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-4 w-4 text-info" />
+                                <span className="font-mono">{selectedTask.test_email}</span>
+                              </div>
+                            )}
+                            {selectedTask.test_password && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Key className="h-4 w-4 text-info" />
+                                <span className="font-mono">{selectedTask.test_password}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SMS Code display */}
+                      {selectedTask.smsRequest?.sms_code && (
+                        <SmsCodeDisplay
+                          smsCode={selectedTask.smsRequest.sms_code}
+                          onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                          isResending={resendingCode === selectedTask.id}
+                        />
+                      )}
+
+                      {/* Progress notes */}
+                      <div className="space-y-3">
+                        <Textarea
+                          placeholder="Fortschritt und Notizen hier eingeben..."
+                          value={progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || ''}
+                          onChange={(e) => setProgressNotes({ ...progressNotes, [selectedTask.id]: e.target.value })}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap gap-3 pt-4 border-t">
+                        <Button 
+                          variant="outline" 
+                          onClick={async () => {
+                            if (currentStep > 1) {
+                              await handleGoBackStep(selectedTask);
+                            } else {
+                              setDialogViewMode('details');
+                            }
+                          }}
+                        >
+                          ← Zurück
+                        </Button>
+
+                        <div className="flex-1" />
+
+                        {selectedTask.status === 'assigned' && !selectedTask.assignment?.accepted_at && isCheckedIn && (
+                          <Button
+                            onClick={async () => {
+                              await handleAcceptTask(selectedTask.id);
+                              await updateWorkflow(selectedTask.id, { workflow_step: 1, workflow_digital: null });
+                            }}
+                          >
+                            Auftrag annehmen
+                          </Button>
+                        )}
+
+                        {selectedTask.assignment?.accepted_at && (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleGoToDocuments(selectedTask.id)}
+                              className="gap-2"
+                            >
+                              <FileUp className="h-4 w-4" />
+                              Dokumente
+                            </Button>
+
+                            <Button
+                              className="gap-2"
+                              onClick={() => handlePrimaryStepAction(selectedTask)}
+                            >
+                              {(() => {
+                                const step = getWorkflowStep(selectedTask);
+                                if (step === 3) return 'Weiter (Entscheidung)';
+                                if (step === 4) return selectedTask.smsRequest?.sms_code ? 'Weiter' : 'Demo-Daten anfordern / prüfen';
+                                if (step === 5) return 'Videochat erledigt → weiter';
+                                if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
+                                if (step === 8) return 'Auftrag abschließen';
+                                return 'Weiter';
+                              })()}
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+
+                            {getWorkflowStep(selectedTask) === 8 && (taskDocuments[selectedTask.id] || 0) > 0 ? (
+                              <Button
+                                onClick={() => handleCompleteTask(selectedTask)}
+                                className="gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Abschließen
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()
+              )}
             </>
           )}
         </DialogContent>
