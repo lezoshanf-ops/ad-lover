@@ -245,6 +245,9 @@ export type Database = {
           status: string | null
           task_id: string
           user_id: string
+          workflow_digital: boolean | null
+          workflow_step: number
+          workflow_updated_at: string
         }
         Insert: {
           accepted_at?: string | null
@@ -254,6 +257,9 @@ export type Database = {
           status?: string | null
           task_id: string
           user_id: string
+          workflow_digital?: boolean | null
+          workflow_step?: number
+          workflow_updated_at?: string
         }
         Update: {
           accepted_at?: string | null
@@ -263,6 +269,9 @@ export type Database = {
           status?: string | null
           task_id?: string
           user_id?: string
+          workflow_digital?: boolean | null
+          workflow_step?: number
+          workflow_updated_at?: string
         }
         Relationships: [
           {
