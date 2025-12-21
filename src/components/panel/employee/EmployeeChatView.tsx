@@ -31,6 +31,7 @@ import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '../TypingIndicator';
 import { EmojiPicker } from '../EmojiPicker';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -74,6 +75,8 @@ export default function EmployeeChatView() {
     recipientId,
   });
 
+  const { playNotificationSound } = useNotificationSound();
+
   useEffect(() => {
     if (user) {
       fetchMessages();
@@ -87,6 +90,11 @@ export default function EmployeeChatView() {
           if (!newMsg.is_group_message && (newMsg.sender_id === user.id || newMsg.recipient_id === user.id)) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
+            
+            // Play sound for incoming messages (not own messages)
+            if (newMsg.sender_id !== user.id) {
+              playNotificationSound();
+            }
             
             // Auto-mark as read if it's for us
             if (newMsg.recipient_id === user.id && !newMsg.read_at) {

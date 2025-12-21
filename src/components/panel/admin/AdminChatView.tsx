@@ -31,6 +31,7 @@ import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '../TypingIndicator';
 import { EmojiPicker } from '../EmojiPicker';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -70,6 +71,8 @@ export default function AdminChatView() {
     userName: myProfile ? `${myProfile.first_name} ${myProfile.last_name}`.trim() : 'Admin',
     recipientId: selectedEmployee,
   });
+
+  const { playNotificationSound } = useNotificationSound();
 
   useEffect(() => {
     fetchProfiles();
@@ -129,6 +132,11 @@ export default function AdminChatView() {
                (newMsg.sender_id === selectedEmployee && newMsg.recipient_id === user.id))) {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
+            
+            // Play sound for incoming messages (not own messages)
+            if (newMsg.sender_id !== user.id) {
+              playNotificationSound();
+            }
             
             if (newMsg.recipient_id === user.id) {
               markMessageAsRead(newMsg.id);
