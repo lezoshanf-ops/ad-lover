@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video
+  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video, Phone
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -1622,7 +1622,21 @@ export default function EmployeeTasksView() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Phone Number Display */}
+              {(() => {
+                const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
+                if (currentTask?.customer_phone) {
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm font-medium">{currentTask.customer_phone}</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               {/* SMS Code Display - Prominent when available */}
               {(() => {
                 const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
