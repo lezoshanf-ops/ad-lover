@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useAvatarRefresh } from '@/hooks/useAvatarRefresh';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, ChevronRight, PanelLeftClose, PanelLeft, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -41,11 +42,13 @@ export default function PanelSidebar({
   onVerificationClick,
 }: PanelSidebarProps) {
   const { profile, role, signOut } = useAuth();
+  const avatarRefreshKey = useAvatarRefresh();
 
   const getAvatarUrl = () => {
     if (!profile?.avatar_url) return null;
     const { data } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url);
-    return data.publicUrl;
+    // Add cache-busting timestamp when refreshKey changes
+    return `${data.publicUrl}?t=${avatarRefreshKey || Date.now()}`;
   };
 
   const handleSignOut = async () => {

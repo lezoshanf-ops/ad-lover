@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Primary - Professional blue */
-    --primary: 217 91% 50%;
+    /* Primary - Brand Red (like logo) */
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary */
@@ -45,13 +45,13 @@
     /* Border & Input & Ring */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 217 91% 50%;
+    --ring: 0 72% 51%;
     
     /* Sidebar - Dark theme neutral */
     --sidebar: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
-    --sidebar-accent: 217 33% 20%;
+    --sidebar-accent: 0 50% 25%;
     --sidebar-accent-foreground: 210 40% 98%;
     
     /* Status colors */
@@ -76,21 +76,21 @@
     --status-busy: 0 84% 60%;
     --status-offline: 220 9% 46%;
     
-    /* Employee panel accent - neutral blue */
-    --employee-accent: 217 91% 50%;
-    --employee-accent-light: 217 60% 96%;
+    /* Employee panel accent - Brand red */
+    --employee-accent: 0 72% 51%;
+    --employee-accent-light: 0 60% 96%;
     --employee-accent-foreground: 0 0% 100%;
     
     /* Custom gradient tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 50%) 0%, hsl(217, 91%, 40%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(0, 72%, 51%) 0%, hsl(0, 72%, 41%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(220, 14%, 98%) 100%);
-    --gradient-employee: linear-gradient(135deg, hsl(217, 91%, 50%) 0%, hsl(217, 91%, 40%) 100%);
+    --gradient-employee: linear-gradient(135deg, hsl(0, 72%, 51%) 0%, hsl(0, 72%, 41%) 100%);
     
     /* Shadow tokens */
     --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.3);
+    --shadow-glow: 0 0 20px rgba(220, 38, 38, 0.3);
 
     --radius: 0.75rem;
   }
@@ -106,8 +106,8 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
     
-    /* Primary - Professional blue */
-    --primary: 217 91% 55%;
+    /* Primary - Brand Red (like logo) */
+    --primary: 0 72% 55%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary */
@@ -135,13 +135,13 @@
     /* Border & Input & Ring */
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 217 91% 55%;
+    --ring: 0 72% 55%;
     
     /* Sidebar - Dark theme neutral */
     --sidebar: 222 47% 8%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
-    --sidebar-accent: 217 33% 22%;
+    --sidebar-accent: 0 50% 25%;
     --sidebar-accent-foreground: 210 40% 98%;
     
     /* Status colors */
@@ -166,21 +166,21 @@
     --status-busy: 0 84% 60%;
     --status-offline: 215 20% 65%;
     
-    /* Employee panel accent - neutral blue */
-    --employee-accent: 217 91% 55%;
-    --employee-accent-light: 217 50% 20%;
+    /* Employee panel accent - Brand red */
+    --employee-accent: 0 72% 55%;
+    --employee-accent-light: 0 50% 20%;
     --employee-accent-foreground: 0 0% 100%;
     
     /* Custom gradient tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(217, 91%, 45%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(0, 72%, 55%) 0%, hsl(0, 72%, 45%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
-    --gradient-employee: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(217, 91%, 45%) 100%);
+    --gradient-employee: linear-gradient(135deg, hsl(0, 72%, 55%) 0%, hsl(0, 72%, 45%) 100%);
     
     /* Shadow tokens */
     --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.3), 0 10px 20px -2px rgba(0, 0, 0, 0.2);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.4);
+    --shadow-glow: 0 0 20px rgba(220, 38, 38, 0.4);
   }
 }
 

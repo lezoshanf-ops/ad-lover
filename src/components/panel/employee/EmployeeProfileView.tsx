@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { triggerAvatarRefresh } from '@/hooks/useAvatarRefresh';
 import { Camera, User, Mail, Euro, CheckCircle, Clock, FileText } from 'lucide-react';
 
 interface EmployeeStats {
@@ -167,6 +168,9 @@ export default function EmployeeProfileView() {
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setAvatarUrl(urlData.publicUrl + '?t=' + Date.now());
+      
+      // Trigger refresh of avatar in header and sidebar
+      triggerAvatarRefresh();
       
       toast({ title: 'Erfolg', description: 'Profilbild wurde aktualisiert.' });
     } catch (error: any) {

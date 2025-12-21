@@ -4,6 +4,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAvatarRefresh } from '@/hooks/useAvatarRefresh';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PanelHeaderProps {
@@ -16,11 +17,13 @@ export default function PanelHeader({
   headerActions,
 }: PanelHeaderProps) {
   const { profile } = useAuth();
+  const avatarRefreshKey = useAvatarRefresh();
 
   const getAvatarUrl = () => {
     if (!profile?.avatar_url) return null;
     const { data } = supabase.storage.from('avatars').getPublicUrl(profile.avatar_url);
-    return data.publicUrl;
+    // Add cache-busting timestamp when refreshKey changes
+    return `${data.publicUrl}?t=${avatarRefreshKey || Date.now()}`;
   };
 
   return (

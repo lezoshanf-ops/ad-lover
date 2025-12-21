@@ -995,7 +995,7 @@ export default function EmployeeTasksView() {
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             {pendingReviewTasks.map((task) => (
-              <Card key={task.id} className="overflow-hidden border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 hover:border-orange-500/30 transition-all duration-300">
+              <Card key={task.id} className="overflow-hidden border-orange-500/20 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/30 hover:border-orange-500/40 transition-all duration-300">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-500/30">
@@ -1025,7 +1025,7 @@ export default function EmployeeTasksView() {
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             {completedTasks.slice(0, 4).map((task) => (
-              <Card key={task.id} className="overflow-hidden border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/30 transition-all duration-300 cursor-default">
+              <Card key={task.id} className="overflow-hidden border-green-500/20 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/30 hover:border-green-500/40 transition-all duration-300 cursor-default">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30">
