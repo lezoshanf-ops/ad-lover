@@ -927,7 +927,7 @@ export default function EmployeeTasksView() {
 
       {/* Task Detail / Flow View */}
       <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto [&>button]:hidden">
           {selectedTask && (
             <>
               {dialogViewMode === 'details' ? (
@@ -965,20 +965,20 @@ export default function EmployeeTasksView() {
                         )}
                       </div>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={priorityConfig[selectedTask.priority].color}>
-                            {priorityConfig[selectedTask.priority].label}
-                          </Badge>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className={statusConfig[selectedTask.status].color}>
                             {statusConfig[selectedTask.status].label}
                           </Badge>
+                          {selectedTask.special_compensation && selectedTask.special_compensation > 0 && (
+                            <Badge variant="outline" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                              <Euro className="h-3 w-3 mr-1" />
+                              {selectedTask.special_compensation}€
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className={cn(priorityConfig[selectedTask.priority].color, "animate-pulse")}>
+                            {priorityConfig[selectedTask.priority].label}
+                          </Badge>
                         </div>
-                        {selectedTask.special_compensation && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Sondervergütung:</span>
-                            <span className="text-sm">{selectedTask.special_compensation}€</span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -990,22 +990,16 @@ export default function EmployeeTasksView() {
                       </div>
                     )}
 
-                    {/* Web Ident URL */}
+                    {/* Web Ident URL - Show without link */}
                     {selectedTask.web_ident_url && (
                       <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2">
                           <Globe className="h-4 w-4 text-primary" />
-                          <span className="font-medium">Webseite</span>
+                          <span className="font-medium">Webseite verfügbar</span>
                         </div>
-                        <a 
-                          href={selectedTask.web_ident_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline flex items-center gap-1"
-                        >
-                          {selectedTask.web_ident_url}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Die Webseite wird im Auftragsschritt 5 geöffnet.
+                        </p>
                       </div>
                     )}
 
@@ -1322,7 +1316,7 @@ export default function EmployeeTasksView() {
 
       {/* Video Chat Confirmation Dialog */}
       <Dialog open={videoChatDialog.open} onOpenChange={(open) => setVideoChatDialog({ ...videoChatDialog, open })}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl [&>button]:hidden">
           <DialogHeader>
             <DialogTitle className="text-center text-xl">
               Möchtest du den Video-Chat durchführen?
@@ -1416,7 +1410,7 @@ export default function EmployeeTasksView() {
       <Dialog open={completionDialog.open} onOpenChange={(open) => {
         if (!open) setCompletionDialog({ ...completionDialog, open: false });
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md [&>button]:hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl">
               <PartyPopper className="h-6 w-6 text-yellow-500" />
@@ -1469,73 +1463,77 @@ export default function EmployeeTasksView() {
         </DialogContent>
       </Dialog>
 
-      {/* Web-Ident Dialog */}
+      {/* Web-Ident Dialog - Elegant Design */}
       <Dialog open={webIdentDialog.open} onOpenChange={(open) => setWebIdentDialog({ ...webIdentDialog, open })}>
-        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden">
-          <DialogHeader className="p-4 pb-2 border-b bg-background/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-cyan-500" />
-                Web-Ident: {webIdentDialog.taskTitle}
-              </DialogTitle>
-              <div className="flex items-center gap-2">
-                {/* SMS Code Request Button */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-2"
-                  onClick={() => {
-                    if (webIdentDialog.taskId) {
-                      handleRequestSms(webIdentDialog.taskId);
-                    }
-                  }}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  SMS anfordern
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer" className="gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    Extern öffnen
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' })}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden [&>button]:hidden">
+          {/* Custom Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-background to-primary/5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Video className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">{webIdentDialog.taskTitle}</h3>
+                <p className="text-xs text-muted-foreground">Video-Verifizierung</p>
               </div>
             </div>
-            <DialogDescription className="text-sm">
-              Führe die Web-Ident-Verifizierung hier durch.
-            </DialogDescription>
             
-            {/* Show SMS Code if available */}
-            {(() => {
-              const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
-              if (currentTask?.smsRequest?.sms_code) {
-                return (
-                  <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-                        SMS-Code
-                      </span>
-                      <span className="text-2xl font-mono font-bold text-primary tracking-widest">
+            <div className="flex items-center gap-2">
+              {/* SMS Code Display - Prominent when available */}
+              {(() => {
+                const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
+                if (currentTask?.smsRequest?.sms_code) {
+                  return (
+                    <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Code</span>
+                      <span className="text-xl font-mono font-bold text-primary tracking-[0.3em]">
                         {currentTask.smsRequest.sms_code}
                       </span>
                     </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </DialogHeader>
-          <div className="flex-1 h-full relative">
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Action Buttons */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 border-primary/20 hover:bg-primary/5"
+                onClick={() => {
+                  if (webIdentDialog.taskId) {
+                    handleRequestSms(webIdentDialog.taskId);
+                  }
+                }}
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">SMS anfordern</span>
+              </Button>
+              
+              <Button variant="outline" size="sm" asChild className="gap-2 border-muted-foreground/20">
+                <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="hidden sm:inline">Extern</span>
+                </a>
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' })}
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Schließen</span>
+              </Button>
+            </div>
+          </div>
+          
+          {/* iframe Container */}
+          <div className="flex-1 h-full relative bg-muted/30">
             <iframe
               src={webIdentDialog.url}
-              className="w-full h-[calc(90vh-100px)] border-0"
+              className="w-full h-[calc(90vh-70px)] border-0"
               title="Web-Ident Verifizierung"
               allow="camera; microphone; geolocation; fullscreen"
               sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-presentation"
