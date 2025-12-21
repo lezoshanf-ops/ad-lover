@@ -44,6 +44,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_group_message: boolean | null
+          is_pinned: boolean
           message: string
           read_at: string | null
           recipient_id: string | null
@@ -55,6 +56,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_group_message?: boolean | null
+          is_pinned?: boolean
           message: string
           read_at?: string | null
           recipient_id?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_group_message?: boolean | null
+          is_pinned?: boolean
           message?: string
           read_at?: string | null
           recipient_id?: string | null

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck, Search, Reply, CornerDownRight, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck, Search, Reply, CornerDownRight, Pencil, Trash2, MoreVertical, Pin, PinOff } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +42,7 @@ interface ProfileWithStatus extends Profile {
 interface ExtendedChatMessage extends ChatMessage {
   image_url?: string | null;
   updated_at?: string | null;
+  is_pinned?: boolean;
 }
 
 export default function EmployeeChatView() {
@@ -338,6 +339,23 @@ export default function EmployeeChatView() {
     setDeleteMessageId(null);
   };
 
+  const handlePinMessage = async (msgId: string, isPinned: boolean) => {
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ is_pinned: !isPinned })
+      .eq('id', msgId);
+    
+    if (error) {
+      toast({ title: 'Fehler', description: 'Nachricht konnte nicht gepinnt werden.', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !isPinned } : m));
+      toast({ 
+        title: !isPinned ? 'Nachricht gepinnt' : 'Nachricht entpinnt', 
+        description: !isPinned ? 'Die Nachricht wurde als wichtig markiert.' : 'Die Markierung wurde entfernt.'
+      });
+    }
+  };
+
   const startEditing = (msg: ExtendedChatMessage) => {
     setEditingMessage(msg);
     setEditText(msg.message || '');
@@ -551,8 +569,15 @@ export default function EmployeeChatView() {
                                     isOwn
                                       ? 'bg-primary text-primary-foreground rounded-br-sm'
                                       : 'bg-muted rounded-bl-sm'
-                                  }`}
+                                  } ${msg.is_pinned ? 'ring-2 ring-amber-400/50' : ''}`}
                                 >
+                                  {/* Pin indicator */}
+                                  {msg.is_pinned && (
+                                    <div className={`flex items-center gap-1 mb-1.5 ${isOwn ? 'text-primary-foreground/70' : 'text-amber-600'}`}>
+                                      <Pin className="h-3 w-3" />
+                                      <span className="text-[10px] font-medium">Gepinnt</span>
+                                    </div>
+                                  )}
                                   {/* Quote preview if message starts with > */}
                                   {msg.message?.startsWith('>') && (
                                     <div className={`flex items-start gap-1 mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
@@ -578,8 +603,15 @@ export default function EmployeeChatView() {
                                 </div>
                               {/* Action buttons */}
                               <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ${
-                                isOwn ? '-left-20' : '-right-20'
+                                isOwn ? '-left-24' : '-right-24'
                               }`}>
+                                <button
+                                  onClick={() => handlePinMessage(msg.id, !!msg.is_pinned)}
+                                  className={`p-1.5 rounded-full bg-background border shadow-sm hover:bg-muted ${msg.is_pinned ? 'text-amber-600' : ''}`}
+                                  title={msg.is_pinned ? 'Entpinnen' : 'Pinnen'}
+                                >
+                                  {msg.is_pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                </button>
                                 <button
                                   onClick={() => setReplyingTo(msg)}
                                   className="p-1.5 rounded-full bg-background border shadow-sm hover:bg-muted"
