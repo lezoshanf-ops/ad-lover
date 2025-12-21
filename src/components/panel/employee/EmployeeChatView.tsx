@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck } from 'lucide-react';
+import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
@@ -34,6 +34,8 @@ export default function EmployeeChatView() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [myProfile, setMyProfile] = useState<ProfileWithStatus | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -268,25 +270,64 @@ export default function EmployeeChatView() {
     return profiles[userId]?.status || 'offline';
   };
 
+  // Filter messages based on search query
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter(msg => 
+        msg.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        profiles[msg.sender_id]?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        profiles[msg.sender_id]?.last_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : messages;
+
   return (
     <div className="h-[calc(100vh-12rem)]">
       <Card className="shadow-lg h-full flex flex-col">
-        <CardHeader className="pb-3 border-b">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold text-lg">Nachrichten</h2>
+        <CardHeader className="pb-3 border-b space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold text-lg">Nachrichten</h2>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSearching(!isSearching)}
+              className={isSearching ? 'bg-muted' : ''}
+              title="Nachrichten durchsuchen"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
+          {isSearching && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Nachrichten durchsuchen..."
+                className="pl-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
-              {messages.length === 0 ? (
+              {filteredMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <MessageCircle className="h-12 w-12 mb-4 opacity-50" />
-                  <p>Noch keine Nachrichten.</p>
+                  <p>{searchQuery ? 'Keine Nachrichten gefunden.' : 'Noch keine Nachrichten.'}</p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                filteredMessages.map((msg) => {
                   const isOwn = msg.sender_id === user?.id;
                   const senderProfile = profiles[msg.sender_id];
                   const senderStatus = getStatus(msg.sender_id);
