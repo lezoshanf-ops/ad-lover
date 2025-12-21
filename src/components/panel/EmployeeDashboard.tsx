@@ -6,6 +6,7 @@ import PanelHeader from './PanelHeader';
 import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import EmployeeDashboardView from './employee/EmployeeDashboardView';
 import EmployeeTasksView from './employee/EmployeeTasksView';
 import EmployeeTimeView from './employee/EmployeeTimeView';
 import EmployeeDocumentsView from './employee/EmployeeDocumentsView';
@@ -136,6 +137,7 @@ export default function EmployeeDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
+        return <EmployeeDashboardView onNavigate={setActiveTab} />;
       case 'tasks':
         return <EmployeeTasksView />;
       case 'time':

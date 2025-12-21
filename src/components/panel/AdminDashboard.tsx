@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import PanelSidebar from './PanelSidebar';
 import PanelHeader from './PanelHeader';
+import AdminDashboardView from './admin/AdminDashboardView';
 import AdminTasksView from './admin/AdminTasksView';
 import AdminUsersView from './admin/AdminUsersView';
 import AdminSmsView from './admin/AdminSmsView';
@@ -157,6 +158,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
+        return <AdminDashboardView onNavigate={setActiveTab} />;
       case 'tasks':
         return <AdminTasksView />;
       case 'users':
