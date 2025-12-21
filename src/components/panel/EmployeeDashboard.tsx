@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import PanelSidebar from './PanelSidebar';
 import PanelHeader from './PanelHeader';
-import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard } from 'lucide-react';
+import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard, ClipboardCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import EmployeeDashboardView from './employee/EmployeeDashboardView';
@@ -13,6 +13,7 @@ import EmployeeDocumentsView from './employee/EmployeeDocumentsView';
 import EmployeeVacationView from './employee/EmployeeVacationView';
 import EmployeeProfileView from './employee/EmployeeProfileView';
 import EmployeeNotificationsView from './employee/EmployeeNotificationsView';
+import EmployeeEvaluationsView from './employee/EmployeeEvaluationsView';
 import { NotificationSettings } from './employee/NotificationSettings';
 import { cn } from '@/lib/utils';
 
@@ -120,6 +121,7 @@ export default function EmployeeDashboard() {
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'tasks', label: 'Meine Aufträge', icon: ClipboardList },
+        { id: 'evaluations', label: 'Bewertungsbögen', icon: ClipboardCheck },
         { id: 'documents', label: 'Meine Verträge', icon: FileText },
       ],
     },
@@ -140,6 +142,8 @@ export default function EmployeeDashboard() {
         return <EmployeeDashboardView onNavigate={setActiveTab} />;
       case 'tasks':
         return <EmployeeTasksView />;
+      case 'evaluations':
+        return <EmployeeEvaluationsView />;
       case 'time':
         return <EmployeeTimeView />;
       case 'documents':

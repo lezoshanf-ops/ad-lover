@@ -32,9 +32,13 @@
     --accent: 220 14% 96%;
     --accent-foreground: 222 47% 11%;
     
-    /* Destructive */
+    /* Destructive - Red for errors/warnings */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    
+    /* Accent Red - subtle red touches */
+    --accent-red: 0 72% 51%;
+    --accent-red-light: 0 72% 95%;
     
     /* Border & Input & Ring */
     --border: 220 13% 91%;

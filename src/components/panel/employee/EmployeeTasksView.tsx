@@ -7,8 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -124,13 +122,8 @@ interface TaskWithDetails extends Task {
 export default function EmployeeTasksView() {
   const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, number>>({});
+  const [taskEvaluations, setTaskEvaluations] = useState<Record<string, boolean>>({});
   const [progressNotes, setProgressNotes] = useState<Record<string, string>>({});
-  const [evaluationDrafts, setEvaluationDrafts] = useState<Record<string, {
-    design: string;
-    usability: string;
-    overall: string;
-    comment: string;
-  }>>({});
   const [statusRequests, setStatusRequests] = useState<StatusRequest[]>([]);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -378,11 +371,12 @@ export default function EmployeeTasksView() {
     if (assignments && assignments.length > 0) {
       const taskIds = assignments.map(a => a.task_id);
       
-      const [tasksRes, profilesRes, smsRes, docsRes] = await Promise.all([
+      const [tasksRes, profilesRes, smsRes, docsRes, evalsRes] = await Promise.all([
         supabase.from('tasks').select('*').in('id', taskIds).order('created_at', { ascending: false }),
         supabase.from('profiles').select('*'),
         supabase.from('sms_code_requests').select('*').in('task_id', taskIds).eq('user_id', user.id).order('requested_at', { ascending: false }),
-        supabase.from('documents').select('id, task_id').eq('user_id', user.id).in('task_id', taskIds)
+        supabase.from('documents').select('id, task_id').eq('user_id', user.id).in('task_id', taskIds),
+        supabase.from('task_evaluations').select('task_id').eq('user_id', user.id).in('task_id', taskIds)
       ]);
 
       const docCounts: Record<string, number> = {};
@@ -394,6 +388,14 @@ export default function EmployeeTasksView() {
         });
       }
       setTaskDocuments(docCounts);
+
+      const evalMap: Record<string, boolean> = {};
+      if (evalsRes.data) {
+        evalsRes.data.forEach(ev => {
+          evalMap[ev.task_id] = true;
+        });
+      }
+      setTaskEvaluations(evalMap);
 
       if (tasksRes.data) {
         const enrichedTasks = tasksRes.data.map(task => {
@@ -413,6 +415,7 @@ export default function EmployeeTasksView() {
     } else {
       setTasks([]);
       setTaskDocuments({});
+      setTaskEvaluations({});
     }
   };
 
@@ -576,14 +579,16 @@ export default function EmployeeTasksView() {
     }
 
     if (step === 2) {
-      const notes = progressNotes[task.id] || task.assignment?.progress_notes || '';
-      const hasEvaluation = notes.includes('## Bewertungsbogen');
+      const hasEvaluation = taskEvaluations[task.id];
       if (!hasEvaluation) {
         toast({
           title: 'Bewertungsbogen ausfüllen',
-          description: 'Bitte fülle den Bewertungsbogen aus und speichere ihn, bevor du fortfährst.',
+          description: 'Bitte gehe zum Tab „Bewertungsbögen" und fülle deine Bewertung aus.',
           variant: 'destructive',
         });
+        if (tabContext) {
+          tabContext.setActiveTab('evaluations');
+        }
         return;
       }
       await setWorkflowStep(task, 3);
@@ -930,149 +935,24 @@ export default function EmployeeTasksView() {
                       </div>
                     </div>
 
-                    {/* Bewertungsbogen (Step 2) */}
+                    {/* Bewertungsbogen Hinweis (Step 2) */}
                     {currentStep === 2 && (
-                      <div className="mt-6 p-4 rounded-lg border bg-primary/5 border-primary/15">
-                        <h4 className="font-medium mb-4">Bewertungsbogen</h4>
-
-                        <div className="grid gap-4">
-                          <div className="grid gap-2">
-                            <Label>Design (1–5)</Label>
-                            <RadioGroup
-                              value={evaluationDrafts[selectedTask.id]?.design || ''}
-                              onValueChange={(value) =>
-                                setEvaluationDrafts((prev) => ({
-                                  ...prev,
-                                  [selectedTask.id]: {
-                                    design: value,
-                                    usability: prev[selectedTask.id]?.usability || '',
-                                    overall: prev[selectedTask.id]?.overall || '',
-                                    comment: prev[selectedTask.id]?.comment || '',
-                                  },
-                                }))
-                              }
-                              className="flex flex-wrap gap-3"
-                            >
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <div key={`design-${n}`} className="flex items-center gap-2">
-                                  <RadioGroupItem id={`design-${n}`} value={String(n)} />
-                                  <Label htmlFor={`design-${n}`}>{n}</Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <Label>Übersichtlichkeit (1–5)</Label>
-                            <RadioGroup
-                              value={evaluationDrafts[selectedTask.id]?.usability || ''}
-                              onValueChange={(value) =>
-                                setEvaluationDrafts((prev) => ({
-                                  ...prev,
-                                  [selectedTask.id]: {
-                                    design: prev[selectedTask.id]?.design || '',
-                                    usability: value,
-                                    overall: prev[selectedTask.id]?.overall || '',
-                                    comment: prev[selectedTask.id]?.comment || '',
-                                  },
-                                }))
-                              }
-                              className="flex flex-wrap gap-3"
-                            >
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <div key={`usability-${n}`} className="flex items-center gap-2">
-                                  <RadioGroupItem id={`usability-${n}`} value={String(n)} />
-                                  <Label htmlFor={`usability-${n}`}>{n}</Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <Label>Gesamteindruck (1–5)</Label>
-                            <RadioGroup
-                              value={evaluationDrafts[selectedTask.id]?.overall || ''}
-                              onValueChange={(value) =>
-                                setEvaluationDrafts((prev) => ({
-                                  ...prev,
-                                  [selectedTask.id]: {
-                                    design: prev[selectedTask.id]?.design || '',
-                                    usability: prev[selectedTask.id]?.usability || '',
-                                    overall: value,
-                                    comment: prev[selectedTask.id]?.comment || '',
-                                  },
-                                }))
-                              }
-                              className="flex flex-wrap gap-3"
-                            >
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <div key={`overall-${n}`} className="flex items-center gap-2">
-                                  <RadioGroupItem id={`overall-${n}`} value={String(n)} />
-                                  <Label htmlFor={`overall-${n}`}>{n}</Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <Label>Kommentar (optional)</Label>
-                            <Textarea
-                              value={evaluationDrafts[selectedTask.id]?.comment || ''}
-                              onChange={(e) =>
-                                setEvaluationDrafts((prev) => ({
-                                  ...prev,
-                                  [selectedTask.id]: {
-                                    design: prev[selectedTask.id]?.design || '',
-                                    usability: prev[selectedTask.id]?.usability || '',
-                                    overall: prev[selectedTask.id]?.overall || '',
-                                    comment: e.target.value,
-                                  },
-                                }))
-                              }
-                              className="min-h-[90px]"
-                              placeholder="Kurze Notizen zum Ablauf, Besonderheiten, Probleme…"
-                            />
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              onClick={async () => {
-                                const draft = evaluationDrafts[selectedTask.id];
-                                if (!draft?.design || !draft?.usability || !draft?.overall) {
-                                  toast({
-                                    title: 'Unvollständig',
-                                    description: 'Bitte beantworte alle 3 Bewertungen (1–5).',
-                                    variant: 'destructive',
-                                  });
-                                  return;
-                                }
-
-                                const block =
-                                  `## Bewertungsbogen\n` +
-                                  `- Design: ${draft.design}/5\n` +
-                                  `- Übersichtlichkeit: ${draft.usability}/5\n` +
-                                  `- Gesamteindruck: ${draft.overall}/5\n` +
-                                  (draft.comment ? `- Kommentar: ${draft.comment}\n` : '');
-
-                                const existing = progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || '';
-                                const next = existing.includes('## Bewertungsbogen')
-                                  ? existing
-                                  : (existing ? `${existing}\n\n${block}` : block);
-
-                                setProgressNotes((prev) => ({ ...prev, [selectedTask.id]: next }));
-                                await handleUpdateNotes(selectedTask.id, next);
-
-                                toast({ title: 'Gespeichert', description: 'Bewertungsbogen gespeichert.' });
-                              }}
-                            >
-                              Bewertungsbogen speichern
-                            </Button>
-
-                            <Button variant="outline" onClick={() => handlePrimaryStepAction(selectedTask)} className="gap-2">
-                              Weiter
-                            </Button>
-                          </div>
-                        </div>
+                      <div className="mt-6 p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
+                        <h4 className="font-medium mb-2 text-amber-800 dark:text-amber-300">Bewertungsbogen ausfüllen</h4>
+                        <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                          Bitte gehe zum Tab „Bewertungsbögen", um deine strukturierte Bewertung für diesen Auftrag einzutragen.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            if (tabContext) {
+                              tabContext.setActiveTab('evaluations');
+                            }
+                          }}
+                          className="gap-2"
+                        >
+                          Zum Bewertungsbogen
+                        </Button>
                       </div>
                     )}
 

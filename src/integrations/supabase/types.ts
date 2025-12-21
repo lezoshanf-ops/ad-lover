@@ -283,6 +283,50 @@ export type Database = {
           },
         ]
       }
+      task_evaluations: {
+        Row: {
+          comment: string | null
+          created_at: string
+          design_rating: number
+          id: string
+          overall_rating: number
+          task_id: string
+          updated_at: string
+          usability_rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          design_rating: number
+          id?: string
+          overall_rating: number
+          task_id: string
+          updated_at?: string
+          usability_rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          design_rating?: number
+          id?: string
+          overall_rating?: number
+          task_id?: string
+          updated_at?: string
+          usability_rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_evaluations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           created_at: string
