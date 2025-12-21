@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTabContext } from '@/components/panel/EmployeeDashboard';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { cn } from '@/lib/utils';
 
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
@@ -900,89 +901,72 @@ export default function EmployeeTasksView() {
                         })}
                       </div>
                     </div>
-              
-              {/* Workflow steps */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
-                <div className="space-y-2">
-                  {getTaskSteps(selectedTask).map((step) => (
-                    <div 
-                      key={step.number}
-                      className="flex gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                        step.number <= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'
-                      }`}>
-                        {step.number}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium mb-1">{step.title}</h4>
-                        <p className="text-sm text-muted-foreground">{step.description}</p>
+
+                    {/* Video Chat Status Section */}
+                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-medium mb-3">Video-Chat Status</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Video Beratung</p>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span className="text-muted-foreground">
+                              {(selectedTask.assignment as any)?.workflow_digital === true
+                                ? 'Digitaler Ablauf gewählt'
+                                : (selectedTask.assignment as any)?.workflow_digital === false
+                                  ? 'Abgelehnt'
+                                  : 'Noch nicht entschieden'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Video Chat Status Section */}
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-medium mb-3">Video-Chat Status</h4>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Video className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Video Beratung</p>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      <span className="text-muted-foreground">Noch nicht gestartet</span>
+
+                    {/* Task credentials if any */}
+                    {(selectedTask.test_email || selectedTask.test_password) && (
+                      <div className="p-4 bg-info/10 rounded-lg border border-info/20">
+                        <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
+                          Test-Zugangsdaten
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {selectedTask.test_email && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail className="h-4 w-4 text-info" />
+                              <span className="font-mono">{selectedTask.test_email}</span>
+                            </div>
+                          )}
+                          {selectedTask.test_password && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Key className="h-4 w-4 text-info" />
+                              <span className="font-mono">{selectedTask.test_password}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SMS Code display */}
+                    {selectedTask.smsRequest?.sms_code && (
+                      <SmsCodeDisplay
+                        smsCode={selectedTask.smsRequest.sms_code}
+                        onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                        isResending={resendingCode === selectedTask.id}
+                      />
+                    )}
+
+                    {/* Progress notes */}
+                    <div className="space-y-3">
+                      <Textarea
+                        placeholder="Fortschritt und Notizen hier eingeben..."
+                        value={progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || ''}
+                        onChange={(e) => setProgressNotes({ ...progressNotes, [selectedTask.id]: e.target.value })}
+                        className="min-h-[100px]"
+                      />
                     </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Task credentials if any */}
-              {(selectedTask.test_email || selectedTask.test_password) && (
-                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-3 uppercase tracking-wide">
-                    Test-Zugangsdaten
-                  </p>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {selectedTask.test_email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-mono">{selectedTask.test_email}</span>
-                      </div>
-                    )}
-                    {selectedTask.test_password && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Key className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="font-mono">{selectedTask.test_password}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* SMS Code display */}
-              {selectedTask.smsRequest?.sms_code && (
-                <SmsCodeDisplay 
-                  smsCode={selectedTask.smsRequest.sms_code} 
-                  onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
-                  isResending={resendingCode === selectedTask.id}
-                />
-              )}
-              
-              {/* Progress notes */}
-              <div className="space-y-3">
-                <Textarea
-                  placeholder="Fortschritt und Notizen hier eingeben..."
-                  value={progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || ''}
-                  onChange={(e) => setProgressNotes({ ...progressNotes, [selectedTask.id]: e.target.value })}
-                  className="min-h-[100px]"
-                />
-              </div>
-              
+
                {/* Action buttons */}
                <div className="flex flex-wrap gap-3 pt-4 border-t">
                  <Button variant="outline" onClick={() => setSelectedTask(null)}>
@@ -1042,11 +1026,14 @@ export default function EmployeeTasksView() {
                      ) : null}
                    </>
                  )}
-               </div>
-             </>
-           )}
-         </DialogContent>
-       </Dialog>
+                </div>
+                  </>
+                );
+              })()}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Video Chat Confirmation Dialog */}
       <Dialog open={videoChatDialog.open} onOpenChange={(open) => setVideoChatDialog({ ...videoChatDialog, open })}>
