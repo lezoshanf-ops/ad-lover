@@ -94,8 +94,8 @@ function SmsCodeDisplay({
 const priorityConfig: Record<TaskPriority, { color: string; label: string; icon: string }> = {
   low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30', label: 'Niedrig', icon: '○' },
   medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30', label: 'Mittel', icon: '◐' },
-  high: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-600/30 dark:text-orange-300 border border-orange-400 dark:border-orange-500/50', label: 'Hoch', icon: '●' },
-  urgent: { color: 'bg-orange-200 text-orange-900 dark:bg-orange-700/40 dark:text-orange-200 border border-orange-500 dark:border-orange-600/60', label: 'Dringend', icon: '⬤' }
+  high: { color: 'bg-accent-red-light text-accent-red dark:bg-accent-red/20 dark:text-accent-red-muted border border-accent-red/30', label: 'Hoch', icon: '●' },
+  urgent: { color: 'bg-accent-red/10 text-accent-red dark:bg-accent-red/30 dark:text-accent-red border border-accent-red/50 animate-priority-pulse', label: 'Dringend', icon: '⬤' }
 };
 
 const statusConfig: Record<TaskStatus, { color: string; label: string }> = {

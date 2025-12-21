@@ -36,9 +36,11 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Accent Red - subtle red touches */
+    /* Accent Red - subtle red touches for warnings & priorities */
     --accent-red: 0 72% 51%;
-    --accent-red-light: 0 72% 95%;
+    --accent-red-light: 0 60% 96%;
+    --accent-red-dark: 0 72% 45%;
+    --accent-red-muted: 0 50% 60%;
     
     /* Border & Input & Ring */
     --border: 220 13% 91%;
@@ -108,8 +110,14 @@
     --accent-foreground: 210 40% 98%;
     
     /* Destructive */
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+    
+    /* Accent Red - subtle red touches for warnings & priorities */
+    --accent-red: 0 72% 55%;
+    --accent-red-light: 0 50% 20%;
+    --accent-red-dark: 0 72% 45%;
+    --accent-red-muted: 0 40% 55%;
     
     /* Border & Input & Ring */
     --border: 217 33% 17%;
