@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText } from 'lucide-react';
+import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText, Search, ArrowUpDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -53,6 +53,8 @@ export default function AdminTasksView() {
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'deadline'>('newest');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -219,16 +221,53 @@ export default function AdminTasksView() {
   };
 
   const getFilteredTasks = () => {
+    let filtered = tasks;
+    
+    // Status filter
     switch (statusFilter) {
       case 'open':
-        return tasks.filter(t => t.status === 'pending' || t.status === 'assigned');
+        filtered = filtered.filter(t => t.status === 'pending' || t.status === 'assigned');
+        break;
       case 'in_progress':
-        return tasks.filter(t => t.status === 'in_progress' || t.status === 'sms_requested');
+        filtered = filtered.filter(t => t.status === 'in_progress' || t.status === 'sms_requested');
+        break;
       case 'completed':
-        return tasks.filter(t => t.status === 'completed' || t.status === 'cancelled');
-      default:
-        return tasks;
+        filtered = filtered.filter(t => t.status === 'completed' || t.status === 'cancelled');
+        break;
     }
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.title.toLowerCase().includes(query) ||
+        t.customer_name.toLowerCase().includes(query) ||
+        t.customer_phone?.toLowerCase().includes(query) ||
+        t.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Sort
+    switch (sortBy) {
+      case 'oldest':
+        filtered = [...filtered].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case 'priority':
+        const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+        filtered = [...filtered].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+        break;
+      case 'deadline':
+        filtered = [...filtered].sort((a, b) => {
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        });
+        break;
+      default: // newest
+        filtered = [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    
+    return filtered;
   };
 
   const openCount = tasks.filter(t => t.status === 'pending' || t.status === 'assigned').length;
@@ -340,6 +379,31 @@ export default function AdminTasksView() {
         </Dialog>
       </div>
 
+      {/* Search and Sort */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Aufträge durchsuchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+          <SelectTrigger className="w-full sm:w-48">
+            <ArrowUpDown className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Sortieren" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Neueste zuerst</SelectItem>
+            <SelectItem value="oldest">Älteste zuerst</SelectItem>
+            <SelectItem value="priority">Nach Priorität</SelectItem>
+            <SelectItem value="deadline">Nach Deadline</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Status Filter Tabs */}
       <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="w-full">
         <TabsList className="grid w-full grid-cols-4 h-auto p-1">
@@ -364,6 +428,13 @@ export default function AdminTasksView() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* Results count */}
+      {searchQuery && (
+        <p className="text-sm text-muted-foreground">
+          {filteredTasks.length} Ergebnis{filteredTasks.length !== 1 ? 'se' : ''} gefunden
+        </p>
+      )}
 
       <div className="grid gap-3">
         {filteredTasks.map((task) => {

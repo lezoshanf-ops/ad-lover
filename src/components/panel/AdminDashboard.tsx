@@ -135,7 +135,7 @@ export default function AdminDashboard() {
     {
       title: 'ANFRAGEN',
       items: [
-        { id: 'sms', label: 'SMS-Codes', icon: MessageSquare, badge: pendingSmsCount },
+        { id: 'sms', label: 'SMS-Codes', icon: MessageSquare, badge: pendingSmsCount > 0 ? pendingSmsCount : undefined },
         { id: 'vacation', label: 'Urlaubsanträge', icon: Calendar },
       ],
     },

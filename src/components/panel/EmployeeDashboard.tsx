@@ -128,7 +128,7 @@ export default function EmployeeDashboard() {
       items: [
         { id: 'time', label: 'Zeiterfassung', icon: Clock },
         { id: 'vacation', label: 'Urlaub', icon: Calendar },
-        { id: 'notifications', label: 'Benachrichtigungen', icon: Bell, badge: unreadNotifications },
+        { id: 'notifications', label: 'Benachrichtigungen', icon: Bell, badge: unreadNotifications > 0 ? unreadNotifications : undefined },
         { id: 'profile', label: 'Profil', icon: User },
       ],
     },
