@@ -169,33 +169,12 @@ export default function PanelLogin() {
               {isLoading ? 'Anmelden...' : 'Anmelden'}
             </Button>
             
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-4 text-muted-foreground">
-                  Noch kein Mitarbeiterzugang?
-                </span>
-              </div>
+            {/* Info notice */}
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+              <p className="text-sm text-muted-foreground text-center">
+                <strong>Hinweis:</strong> Der Zugang wird ausschließlich durch das Team per E-Mail vergeben. Bei Fragen wenden Sie sich bitte an Ihren Ansprechpartner.
+              </p>
             </div>
-            
-            {/* Register button */}
-            <Button 
-              type="button"
-              variant="outline"
-              className="w-full h-12 text-base font-medium gap-2"
-              onClick={() => navigate('/panel/register')}
-            >
-              Jetzt registrieren
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            
-            {/* Terms notice */}
-            <p className="text-center text-xs text-muted-foreground mt-6">
-              Durch die Registrierung stimmen Sie unseren Nutzungsbedingungen zu
-            </p>
             
             {/* Legal links */}
             <div className="pt-6 border-t border-border mt-6">

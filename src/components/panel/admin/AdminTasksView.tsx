@@ -364,213 +364,165 @@ export default function AdminTasksView() {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-4">
+      <div className="grid gap-3">
         {filteredTasks.map((task) => {
           const assignee = getTaskAssignee(task.id);
           const assignment = getTaskAssignment(task.id);
           const isHighPriority = task.priority === 'high' || task.priority === 'urgent';
           return (
-            <Card key={task.id} className={`glass-card overflow-hidden transition-all hover:shadow-glow ${isHighPriority ? 'neon-border' : ''}`}>
-              <div className={`h-1.5 ${
-                task.priority === 'urgent' ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse' :
-                task.priority === 'high' ? 'bg-gradient-to-r from-red-500 to-red-600' :
-                task.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-amber-500' : 'bg-muted'
-              }`} />
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{task.title}</CardTitle>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <Badge className={priorityColors[task.priority]}>
-                        {task.priority === 'low' ? '○ Niedrig' : task.priority === 'medium' ? '◐ Mittel' : task.priority === 'high' ? '● Hoch' : '⬤ Dringend'}
-                      </Badge>
-                      <Badge className={statusColors[task.status]}>
-                        {statusLabels[task.status]}
-                      </Badge>
-                      {task.special_compensation && (
-                        <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                          <Euro className="h-3 w-3 mr-1" />
-                          {task.special_compensation.toFixed(2)} €
+            <Card key={task.id} className={`overflow-hidden transition-all hover:shadow-md ${isHighPriority ? 'ring-1 ring-red-500/30' : ''}`}>
+              <div className="flex items-stretch">
+                {/* Priority indicator bar */}
+                <div className={`w-1 flex-shrink-0 ${
+                  task.priority === 'urgent' ? 'bg-red-500' :
+                  task.priority === 'high' ? 'bg-red-400' :
+                  task.priority === 'medium' ? 'bg-yellow-500' : 'bg-muted'
+                }`} />
+                
+                <div className="flex-1 p-4">
+                  {/* Header row: Title + Badges + Actions */}
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-semibold text-base truncate">{task.title}</h3>
+                        <Badge className={`${priorityColors[task.priority]} text-xs`}>
+                          {task.priority === 'low' ? 'Niedrig' : task.priority === 'medium' ? 'Mittel' : task.priority === 'high' ? 'Hoch' : 'Dringend'}
                         </Badge>
+                        <Badge className={`${statusColors[task.status]} text-xs`}>
+                          {statusLabels[task.status]}
+                        </Badge>
+                        {task.special_compensation && (
+                          <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs">
+                            +{task.special_compensation.toFixed(0)}€
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {!assignee && task.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setIsAssignDialogOpen(true);
+                          }}
+                        >
+                          Zuweisen
+                        </Button>
                       )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Der Auftrag "{task.title}" wird dauerhaft gelöscht.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {!assignee && task.status === 'pending' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setIsAssignDialogOpen(true);
-                        }}
-                      >
-                        Zuweisen
-                      </Button>
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Auftrag löschen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Dieser Vorgang kann nicht rückgängig gemacht werden. Der Auftrag "{task.title}" und alle zugehörigen Daten werden dauerhaft gelöscht.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Löschen
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  {task.description && <p className="text-muted-foreground whitespace-pre-wrap">{task.description}</p>}
-                  <div className="flex flex-wrap gap-4 text-muted-foreground">
+                  
+                  {/* Info row: Customer, Phone, Deadline, Assignee */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
+                      <User className="h-3.5 w-3.5" />
                       {task.customer_name}
                     </span>
                     {task.customer_phone && (
                       <span className="flex items-center gap-1">
-                        <Phone className="h-4 w-4" />
+                        <Phone className="h-3.5 w-3.5" />
                         {task.customer_phone}
                       </span>
                     )}
                     {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 rounded-lg text-sm">
-                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Abgabefrist</p>
-                          <span className="font-semibold text-amber-700 dark:text-amber-400">
-                            {format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}
-                          </span>
-                        </div>
-                      </div>
+                      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <Clock className="h-3.5 w-3.5" />
+                        {format(new Date(task.deadline), 'dd.MM. HH:mm', { locale: de })}
+                      </span>
+                    )}
+                    {assignee && (
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <User className="h-3.5 w-3.5" />
+                        {assignee.first_name} {assignee.last_name}
+                      </span>
+                    )}
+                    {task.web_ident_url && (
+                      <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+                        <Globe className="h-3.5 w-3.5" />
+                        Web-Ident
+                      </span>
+                    )}
+                    {(task.test_email || task.test_password) && (
+                      <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <Key className="h-3.5 w-3.5" />
+                        Test-Daten
+                      </span>
                     )}
                   </div>
-                  {(task.test_email || task.test_password) && (
-                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
-                      <p className="text-xs font-medium mb-2 text-blue-700 dark:text-blue-400">Test-Zugangsdaten</p>
-                      <div className="flex flex-wrap gap-4">
-                        {task.test_email && (
-                          <span className="flex items-center gap-1 text-sm">
-                            <Mail className="h-4 w-4" />
-                            {task.test_email}
-                          </span>
-                        )}
-                        {task.test_password && (
-                          <span className="flex items-center gap-1 text-sm font-mono">
-                            <Key className="h-4 w-4" />
-                            {task.test_password}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {task.web_ident_url && (
-                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-md">
-                      <p className="text-xs font-medium mb-2 text-cyan-700 dark:text-cyan-400 flex items-center gap-1">
-                        <Globe className="h-3 w-3" />
-                        Web-Ident erforderlich
-                      </p>
-                      <a 
-                        href={task.web_ident_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-sm text-cyan-600 dark:text-cyan-400 hover:underline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Link öffnen
-                      </a>
-                    </div>
-                  )}
-                  {assignee && (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                            Zugewiesen an: {assignee.first_name} {assignee.last_name}
-                          </span>
-                        </div>
-                        {(task.status === 'in_progress' || task.status === 'sms_requested') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1 text-xs"
-                            onClick={async () => {
-                              const assignment = getTaskAssignment(task.id);
-                              if (!assignment) {
-                                console.error('No assignment found for task:', task.id);
-                                toast({
-                                  title: 'Fehler',
-                                  description: 'Keine Zuweisung für diesen Auftrag gefunden.',
-                                  variant: 'destructive'
-                                });
-                                return;
-                              }
-                              
-                              console.log('Sending status request notification to user:', assignment.user_id, 'for task:', task.id);
-                              
-                              const { error } = await supabase.from('notifications').insert({
-                                user_id: assignment.user_id,
-                                title: 'Statusanfrage',
-                                message: `Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt des Auftrags "${task.title}". Gehe dazu auf den Auftrag und trage deinen Fortschritt in das Notizfeld ein.`,
-                                type: 'status_request',
-                                related_task_id: task.id
-                              });
-                              
-                              if (error) {
-                                console.error('Error sending status request:', error);
-                                toast({
-                                  title: 'Fehler',
-                                  description: `Statusanfrage konnte nicht gesendet werden: ${error.message}`,
-                                  variant: 'destructive'
-                                });
-                              } else {
-                                console.log('Status request notification sent successfully');
-                                toast({
-                                  title: 'Status angefordert',
-                                  description: `Eine Statusanfrage wurde an ${assignee.first_name} gesendet.`
-                                });
-                              }
-                            }}
-                          >
-                            <MessageCircle className="h-3 w-3" />
-                            Status anfragen
-                          </Button>
-                        )}
-                      </div>
+                  
+                  {/* Expandable details - only show if there's content */}
+                  {(task.description || assignment?.progress_notes) && (
+                    <div className="mt-2 pt-2 border-t border-border/50 text-sm">
+                      {task.description && (
+                        <p className="text-muted-foreground line-clamp-2">{task.description}</p>
+                      )}
                       {assignment?.progress_notes && (
-                        <div className="mt-2 p-2 bg-background/50 rounded text-sm">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                            <Activity className="h-3 w-3" />
-                            Mitarbeiter-Notizen:
-                          </div>
-                          <p>{assignment.progress_notes}</p>
+                        <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                          <span className="font-medium text-muted-foreground">Notiz: </span>
+                          {assignment.progress_notes}
                         </div>
                       )}
                     </div>
                   )}
+                  
+                  {/* Status request button for in-progress tasks */}
+                  {assignee && (task.status === 'in_progress' || task.status === 'sms_requested') && (
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={async () => {
+                          const { error } = await supabase.from('notifications').insert({
+                            user_id: assignment!.user_id,
+                            title: 'Statusanfrage',
+                            message: `Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt des Auftrags "${task.title}".`,
+                            type: 'status_request',
+                            related_task_id: task.id
+                          });
+                          if (error) {
+                            toast({ title: 'Fehler', description: 'Statusanfrage fehlgeschlagen.', variant: 'destructive' });
+                          } else {
+                            toast({ title: 'Status angefordert', description: `Anfrage an ${assignee.first_name} gesendet.` });
+                          }
+                        }}
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        Status anfragen
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </CardContent>
+              </div>
             </Card>
           );
         })}
