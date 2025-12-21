@@ -12,6 +12,8 @@ import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck } from 'lucide-rea
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { TypingIndicator } from '../TypingIndicator';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -30,15 +32,29 @@ export default function EmployeeChatView() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [myProfile, setMyProfile] = useState<ProfileWithStatus | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Get recipient ID (admin who last messaged)
+  const recipientId = messages.length > 0 
+    ? [...messages].reverse().find(m => m.sender_id !== user?.id)?.sender_id 
+    : null;
+
+  const { typingUsers, handleTyping, stopTyping } = useTypingIndicator({
+    channelName: recipientId ? `chat-${[user?.id, recipientId].sort().join('-')}` : 'employee-chat',
+    userId: user?.id,
+    userName: myProfile ? `${myProfile.first_name} ${myProfile.last_name}`.trim() : 'Mitarbeiter',
+    recipientId,
+  });
+
   useEffect(() => {
     if (user) {
       fetchMessages();
       fetchProfiles();
+      fetchMyProfile();
 
       const channel = supabase
         .channel('chat-messages')
@@ -85,6 +101,18 @@ export default function EmployeeChatView() {
       };
     }
   }, [user]);
+
+  const fetchMyProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    if (data) {
+      setMyProfile({ ...data, status: (data as any).status || 'offline' });
+    }
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -211,6 +239,7 @@ export default function EmployeeChatView() {
     });
 
     setUploading(false);
+    stopTyping();
 
     if (error) {
       toast({ title: 'Fehler', description: 'Nachricht konnte nicht gesendet werden.', variant: 'destructive' });
@@ -334,6 +363,9 @@ export default function EmployeeChatView() {
             </div>
           </ScrollArea>
           
+          {/* Typing indicator */}
+          <TypingIndicator typingUsers={typingUsers} />
+          
           {messages.length > 0 && (
             <div className="p-4 border-t bg-background">
               {imagePreview && (
@@ -369,8 +401,12 @@ export default function EmployeeChatView() {
                 </Button>
                 <Input
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    handleTyping();
+                  }}
                   onKeyPress={handleKeyPress}
+                  onBlur={stopTyping}
                   placeholder="Nachricht schreiben..."
                   className="flex-1"
                 />

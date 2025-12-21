@@ -12,6 +12,8 @@ import { Send, MessageCircle, ImagePlus, X, Users, Check, CheckCheck } from 'luc
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { TypingIndicator } from '../TypingIndicator';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -32,14 +34,23 @@ export default function AdminChatView() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [myProfile, setMyProfile] = useState<ProfileWithStatus | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { typingUsers, handleTyping, stopTyping } = useTypingIndicator({
+    channelName: selectedEmployee ? `chat-${[user?.id, selectedEmployee].sort().join('-')}` : 'admin-chat',
+    userId: user?.id,
+    userName: myProfile ? `${myProfile.first_name} ${myProfile.last_name}`.trim() : 'Admin',
+    recipientId: selectedEmployee,
+  });
+
   useEffect(() => {
     fetchProfiles();
     fetchEmployees();
+    fetchMyProfile();
 
     // Listen for profile status changes
     const profileChannel = supabase
@@ -67,6 +78,18 @@ export default function AdminChatView() {
       supabase.removeChannel(profileChannel);
     };
   }, []);
+
+  const fetchMyProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    if (data) {
+      setMyProfile({ ...data, status: (data as any).status || 'offline' });
+    }
+  };
 
   useEffect(() => {
     if (user && selectedEmployee) {
@@ -236,6 +259,7 @@ export default function AdminChatView() {
     });
 
     setUploading(false);
+    stopTyping();
 
     if (error) {
       toast({ title: 'Fehler', description: 'Nachricht konnte nicht gesendet werden.', variant: 'destructive' });
@@ -424,6 +448,9 @@ export default function AdminChatView() {
                   </div>
                 </ScrollArea>
                 
+                {/* Typing indicator */}
+                <TypingIndicator typingUsers={typingUsers} />
+                
                 <div className="p-4 border-t bg-background">
                   {imagePreview && (
                     <div className="relative inline-block mb-2">
@@ -458,8 +485,12 @@ export default function AdminChatView() {
                     </Button>
                     <Input
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        handleTyping();
+                      }}
                       onKeyPress={handleKeyPress}
+                      onBlur={stopTyping}
                       placeholder="Nachricht schreiben..."
                       className="flex-1"
                     />
