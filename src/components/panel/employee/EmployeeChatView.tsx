@@ -14,6 +14,7 @@ import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '../TypingIndicator';
+import { EmojiPicker } from '../EmojiPicker';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -399,6 +400,10 @@ export default function EmployeeChatView() {
                 >
                   <ImagePlus className="h-5 w-5" />
                 </Button>
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setNewMessage(prev => prev + emoji)}
+                  disabled={uploading}
+                />
                 <Input
                   value={newMessage}
                   onChange={(e) => {
