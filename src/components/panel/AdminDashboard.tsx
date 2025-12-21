@@ -209,10 +209,6 @@ export default function AdminDashboard() {
       >
         <PanelHeader
           onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          showSearch={true}
-          searchPlaceholder="Mitarbeiter, Aufträge suchen..."
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
         />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 animate-fade-in">

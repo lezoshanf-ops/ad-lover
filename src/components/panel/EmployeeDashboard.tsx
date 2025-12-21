@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import PanelSidebar from './PanelSidebar';
 import PanelHeader from './PanelHeader';
+import { NotificationBell } from './NotificationBell';
 import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard, ClipboardCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -179,11 +180,12 @@ export default function EmployeeDashboard() {
         >
           <PanelHeader
             onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            showSearch={true}
-            searchPlaceholder="Suchen..."
-            searchValue={searchValue}
-            onSearchChange={setSearchValue}
-            headerActions={<NotificationSettings />}
+            headerActions={
+              <>
+                <NotificationBell onClick={() => setActiveTab('notifications')} />
+                <NotificationSettings />
+              </>
+            }
           />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8 animate-fade-in">

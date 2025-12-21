@@ -136,7 +136,7 @@ export default function EmployeeTasksView() {
   }>({ open: false, task: null, duration: '' });
   const [resendingCode, setResendingCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string }>({ open: false, url: '', taskTitle: '' });
+  const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string; taskId: string }>({ open: false, url: '', taskTitle: '', taskId: '' });
   const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -550,6 +550,21 @@ export default function EmployeeTasksView() {
     }
 
     await fetchTasks();
+    
+    // Update selectedTask if it's the same task to refresh the dialog immediately
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignment: {
+            ...prev.assignment,
+            workflow_step: updates.workflow_step ?? (prev.assignment as any)?.workflow_step,
+            workflow_digital: updates.workflow_digital !== undefined ? updates.workflow_digital : (prev.assignment as any)?.workflow_digital,
+          } as any
+        };
+      });
+    }
   };
 
   const setWorkflowStep = async (
@@ -638,7 +653,7 @@ export default function EmployeeTasksView() {
 
     if (step === 5) {
       if (task.web_ident_url) {
-        setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title });
+        setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title, taskId: task.id });
       }
       // proceed manually after finishing the video chat
       await setWorkflowStep(task, 6);
@@ -994,8 +1009,8 @@ export default function EmployeeTasksView() {
                       </div>
                     )}
 
-                    {/* Test credentials */}
-                    {(selectedTask.test_email || selectedTask.test_password) && (
+                    {/* Test credentials - only visible from step 4 onwards */}
+                    {(selectedTask.test_email || selectedTask.test_password) && getWorkflowStep(selectedTask) >= 4 && (
                       <div className="p-4 bg-info/10 rounded-lg border border-info/20">
                         <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
                           Test-Zugangsdaten
@@ -1186,8 +1201,8 @@ export default function EmployeeTasksView() {
                         </div>
                       </div>
 
-                      {/* Task credentials if any */}
-                      {(selectedTask.test_email || selectedTask.test_password) && (
+                      {/* Task credentials if any - only visible from step 4 onwards */}
+                      {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 4 && (
                         <div className="p-4 bg-info/10 rounded-lg border border-info/20">
                           <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
                             Test-Zugangsdaten
@@ -1208,8 +1223,8 @@ export default function EmployeeTasksView() {
                           </div>
                         </div>
                       )}
-
-                      {/* SMS Code display */}
+                      
+                      {/* SMS Code display at top - show when available */}
                       {selectedTask.smsRequest?.sms_code && (
                         <SmsCodeDisplay
                           smsCode={selectedTask.smsRequest.sms_code}
@@ -1217,6 +1232,7 @@ export default function EmployeeTasksView() {
                           isResending={resendingCode === selectedTask.id}
                         />
                       )}
+
 
                       {/* Progress notes */}
                       <div className="space-y-3">
@@ -1463,6 +1479,20 @@ export default function EmployeeTasksView() {
                 Web-Ident: {webIdentDialog.taskTitle}
               </DialogTitle>
               <div className="flex items-center gap-2">
+                {/* SMS Code Request Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2"
+                  onClick={() => {
+                    if (webIdentDialog.taskId) {
+                      handleRequestSms(webIdentDialog.taskId);
+                    }
+                  }}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  SMS anfordern
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer" className="gap-2">
                     <ExternalLink className="h-4 w-4" />
@@ -1472,7 +1502,7 @@ export default function EmployeeTasksView() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '' })}
+                  onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' })}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -1481,6 +1511,26 @@ export default function EmployeeTasksView() {
             <DialogDescription className="text-sm">
               Führe die Web-Ident-Verifizierung hier durch.
             </DialogDescription>
+            
+            {/* Show SMS Code if available */}
+            {(() => {
+              const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
+              if (currentTask?.smsRequest?.sms_code) {
+                return (
+                  <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+                        SMS-Code
+                      </span>
+                      <span className="text-2xl font-mono font-bold text-primary tracking-widest">
+                        {currentTask.smsRequest.sms_code}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </DialogHeader>
           <div className="flex-1 h-full relative">
             <iframe

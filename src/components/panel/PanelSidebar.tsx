@@ -157,14 +157,7 @@ export default function PanelSidebar({
                             )}
                           </div>
                           {!collapsed && (
-                            <>
-                              <span className="font-medium text-sm flex-1">{item.label}</span>
-                              {item.badge && item.badge > 0 && (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary text-primary-foreground">
-                                  {item.badge}
-                                </span>
-                              )}
-                            </>
+                            <span className="font-medium text-sm flex-1">{item.label}</span>
                           )}
                         </button>
                       </TooltipTrigger>
