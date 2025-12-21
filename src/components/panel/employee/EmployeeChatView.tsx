@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck, Search } from 'lucide-react';
+import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck, Search, Reply, CornerDownRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
@@ -36,6 +36,7 @@ export default function EmployeeChatView() {
   const [myProfile, setMyProfile] = useState<ProfileWithStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ExtendedChatMessage | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -233,10 +234,20 @@ export default function EmployeeChatView() {
       }
     }
 
+    // Build message with quote prefix if replying
+    let messageContent = newMessage.trim() || '';
+    if (replyingTo) {
+      const replyToName = profiles[replyingTo.sender_id]
+        ? `${profiles[replyingTo.sender_id].first_name} ${profiles[replyingTo.sender_id].last_name}`
+        : 'Unbekannt';
+      const quotedText = replyingTo.message?.substring(0, 100) || '[Bild]';
+      messageContent = `> ${replyToName}: ${quotedText}${replyingTo.message && replyingTo.message.length > 100 ? '...' : ''}\n\n${messageContent}`;
+    }
+
     const { error } = await supabase.from('chat_messages').insert({
       sender_id: user.id,
       recipient_id: recipientId,
-      message: newMessage.trim() || '',
+      message: messageContent,
       is_group_message: false,
       image_url: imageUrl
     });
@@ -248,6 +259,7 @@ export default function EmployeeChatView() {
       toast({ title: 'Fehler', description: 'Nachricht konnte nicht gesendet werden.', variant: 'destructive' });
     } else {
       setNewMessage('');
+      setReplyingTo(null);
       clearImage();
     }
   };
@@ -361,24 +373,47 @@ export default function EmployeeChatView() {
                             {format(new Date(msg.created_at), 'HH:mm', { locale: de })}
                           </span>
                         </div>
-                        <div
-                          className={`p-3 rounded-2xl ${
-                            isOwn
-                              ? 'bg-primary text-primary-foreground rounded-br-sm'
-                              : 'bg-muted rounded-bl-sm'
-                          }`}
-                        >
-                          {msg.image_url && (
-                            <img 
-                              src={msg.image_url} 
-                              alt="Bild" 
-                              className="max-w-full rounded-lg mb-2 max-h-64 object-contain cursor-pointer"
-                              onClick={() => window.open(msg.image_url!, '_blank')}
-                            />
-                          )}
-                          {msg.message && (
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                          )}
+                        <div className="group relative">
+                          <div
+                            className={`p-3 rounded-2xl ${
+                              isOwn
+                                ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                : 'bg-muted rounded-bl-sm'
+                            }`}
+                          >
+                            {/* Quote preview if message starts with > */}
+                            {msg.message?.startsWith('>') && (
+                              <div className={`flex items-start gap-1 mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
+                                <CornerDownRight className="h-3 w-3 mt-0.5 opacity-60 shrink-0" />
+                                <p className={`text-xs italic opacity-70 line-clamp-2 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
+                                  {msg.message.split('\n\n')[0].substring(2)}
+                                </p>
+                              </div>
+                            )}
+                            {msg.image_url && (
+                              <img 
+                                src={msg.image_url} 
+                                alt="Bild" 
+                                className="max-w-full rounded-lg mb-2 max-h-64 object-contain cursor-pointer"
+                                onClick={() => window.open(msg.image_url!, '_blank')}
+                              />
+                            )}
+                            {msg.message && (
+                              <p className="text-sm whitespace-pre-wrap break-words">
+                                {msg.message.startsWith('>') ? msg.message.split('\n\n').slice(1).join('\n\n') : msg.message}
+                              </p>
+                            )}
+                          </div>
+                          {/* Reply button */}
+                          <button
+                            onClick={() => setReplyingTo(msg)}
+                            className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full bg-background border shadow-sm hover:bg-muted ${
+                              isOwn ? '-left-8' : '-right-8'
+                            }`}
+                            title="Antworten"
+                          >
+                            <Reply className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                         {/* Read receipt for own messages */}
                         {isOwn && (
@@ -410,6 +445,26 @@ export default function EmployeeChatView() {
           
           {messages.length > 0 && (
             <div className="p-4 border-t bg-background">
+              {/* Reply preview */}
+              {replyingTo && (
+                <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-muted/50 border-l-2 border-primary">
+                  <Reply className="h-4 w-4 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-primary">
+                      Antwort an {profiles[replyingTo.sender_id]?.first_name || 'Unbekannt'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {replyingTo.message?.substring(0, 50) || '[Bild]'}{replyingTo.message && replyingTo.message.length > 50 ? '...' : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="p-1 rounded-full hover:bg-muted"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               {imagePreview && (
                 <div className="relative inline-block mb-2">
                   <img 
