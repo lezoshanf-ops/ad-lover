@@ -1,6 +1,6 @@
 export type AppRole = 'admin' | 'employee';
 
-export type TaskStatus = 'pending' | 'assigned' | 'in_progress' | 'sms_requested' | 'completed' | 'cancelled';
+export type TaskStatus = 'pending' | 'assigned' | 'in_progress' | 'sms_requested' | 'pending_review' | 'completed' | 'cancelled';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -56,6 +56,9 @@ export interface Task {
   created_by: string;
   created_at: string;
   updated_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
 }
 
 export interface TaskAssignment {

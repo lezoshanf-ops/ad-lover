@@ -22,6 +22,7 @@ const statusColors: Record<TaskStatus, string> = {
   assigned: 'bg-status-assigned/20 text-sky-700 dark:text-sky-400',
   in_progress: 'bg-status-in-progress/20 text-violet-700 dark:text-violet-400',
   sms_requested: 'bg-status-sms-requested/20 text-purple-700 dark:text-purple-400',
+  pending_review: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
   completed: 'bg-status-completed/20 text-green-700 dark:text-green-400',
   cancelled: 'bg-status-cancelled/20 text-muted-foreground'
 };
@@ -31,6 +32,7 @@ const statusLabels: Record<TaskStatus, string> = {
   assigned: 'Zugewiesen',
   in_progress: 'In Bearbeitung',
   sms_requested: 'SMS angefordert',
+  pending_review: 'In Überprüfung',
   completed: 'Abgeschlossen',
   cancelled: 'Storniert'
 };

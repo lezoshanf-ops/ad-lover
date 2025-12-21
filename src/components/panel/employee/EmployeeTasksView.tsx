@@ -103,6 +103,7 @@ const statusConfig: Record<TaskStatus, { color: string; label: string }> = {
   assigned: { color: 'bg-status-assigned/20 text-sky-700 dark:text-sky-400 border border-status-assigned/30', label: 'Zugewiesen' },
   in_progress: { color: 'bg-status-in-progress/20 text-violet-700 dark:text-violet-400 border border-status-in-progress/30', label: 'In Bearbeitung' },
   sms_requested: { color: 'bg-status-sms-requested/20 text-purple-700 dark:text-purple-400 border border-status-sms-requested/30', label: 'SMS angefordert' },
+  pending_review: { color: 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-500/30', label: 'In Überprüfung' },
   completed: { color: 'bg-status-completed/20 text-green-700 dark:text-green-400 border border-status-completed/30', label: 'Abgeschlossen' },
   cancelled: { color: 'bg-status-cancelled/20 text-muted-foreground border border-status-cancelled/30', label: 'Storniert' }
 };
@@ -693,7 +694,9 @@ export default function EmployeeTasksView() {
     }
   };
 
-  const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+  const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.status !== 'pending_review');
+  const pendingReviewTasks = tasks.filter(t => t.status === 'pending_review');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
   const filteredTasks = activeTasks.filter(t => 
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     t.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -922,6 +925,68 @@ export default function EmployeeTasksView() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Tasks in Review */}
+      {pendingReviewTasks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-orange-500" />
+            In Überprüfung ({pendingReviewTasks.length})
+          </h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {pendingReviewTasks.map((task) => (
+              <Card key={task.id} className="overflow-hidden border-orange-500/20 bg-orange-500/5">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                      In Überprüfung
+                    </Badge>
+                    {task.special_compensation && task.special_compensation > 0 && (
+                      <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {task.special_compensation}€ ausstehend
+                      </Badge>
+                    )}
+                  </div>
+                  <h4 className="font-semibold">{task.title}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">Wartet auf Genehmigung durch Teammitglied</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Completed Tasks with Approval */}
+      {completedTasks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            Genehmigte Aufträge ({completedTasks.length})
+          </h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {completedTasks.slice(0, 4).map((task) => (
+              <Card key={task.id} className="overflow-hidden border-green-500/20 bg-green-500/5">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className="bg-green-500/20 text-green-700 dark:text-green-400">
+                      Genehmigt
+                    </Badge>
+                    {task.special_compensation && task.special_compensation > 0 && (
+                      <Badge className="bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-semibold">
+                        <Euro className="h-3 w-3 mr-1" />
+                        {task.special_compensation}€ verrechnet ✓
+                      </Badge>
+                    )}
+                  </div>
+                  <h4 className="font-semibold">{task.title}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">{task.customer_name}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 

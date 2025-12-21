@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText, Search, ArrowUpDown } from 'lucide-react';
+import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText, Search, ArrowUpDown, CheckCircle2, XCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -30,6 +30,7 @@ const statusColors: Record<TaskStatus, string> = {
   assigned: 'bg-status-assigned/20 text-sky-700 dark:text-sky-400',
   in_progress: 'bg-status-in-progress/20 text-violet-700 dark:text-violet-400',
   sms_requested: 'bg-status-sms-requested/20 text-purple-700 dark:text-purple-400',
+  pending_review: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
   completed: 'bg-status-completed/20 text-green-700 dark:text-green-400',
   cancelled: 'bg-status-cancelled/20 text-muted-foreground'
 };
@@ -39,6 +40,7 @@ const statusLabels: Record<TaskStatus, string> = {
   assigned: 'Zugewiesen',
   in_progress: 'In Bearbeitung',
   sms_requested: 'SMS angefordert',
+  pending_review: 'In Überprüfung',
   completed: 'Abgeschlossen',
   cancelled: 'Storniert'
 };
@@ -52,9 +54,11 @@ export default function AdminTasksView() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'pending_review' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'deadline'>('newest');
+  const [reviewDialog, setReviewDialog] = useState<{ open: boolean; task: Task | null; action: 'approve' | 'reject' | null }>({ open: false, task: null, action: null });
+  const [reviewNotes, setReviewNotes] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -210,6 +214,47 @@ export default function AdminTasksView() {
     }
   };
 
+  const handleApproveTask = async () => {
+    if (!reviewDialog.task) return;
+    
+    const { error } = await supabase.rpc('approve_task', { 
+      _task_id: reviewDialog.task.id, 
+      _review_notes: reviewNotes || null 
+    });
+    
+    if (error) {
+      toast({ title: 'Fehler', description: 'Genehmigung fehlgeschlagen.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Genehmigt', description: 'Der Auftrag wurde genehmigt und die Sondervergütung wird verrechnet.' });
+      setReviewDialog({ open: false, task: null, action: null });
+      setReviewNotes('');
+      fetchTasks();
+    }
+  };
+
+  const handleRejectTask = async () => {
+    if (!reviewDialog.task) return;
+    
+    if (!reviewNotes.trim()) {
+      toast({ title: 'Fehler', description: 'Bitte gib einen Ablehnungsgrund an.', variant: 'destructive' });
+      return;
+    }
+    
+    const { error } = await supabase.rpc('reject_task', { 
+      _task_id: reviewDialog.task.id, 
+      _review_notes: reviewNotes 
+    });
+    
+    if (error) {
+      toast({ title: 'Fehler', description: 'Ablehnung fehlgeschlagen.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Abgelehnt', description: 'Der Auftrag wurde zur Überarbeitung zurückgewiesen.' });
+      setReviewDialog({ open: false, task: null, action: null });
+      setReviewNotes('');
+      fetchTasks();
+    }
+  };
+
   const getTaskAssignee = (taskId: string) => {
     const assignment = assignments.find(a => a.task_id === taskId);
     if (!assignment) return null;
@@ -230,6 +275,9 @@ export default function AdminTasksView() {
         break;
       case 'in_progress':
         filtered = filtered.filter(t => t.status === 'in_progress' || t.status === 'sms_requested');
+        break;
+      case 'pending_review':
+        filtered = filtered.filter(t => t.status === 'pending_review');
         break;
       case 'completed':
         filtered = filtered.filter(t => t.status === 'completed' || t.status === 'cancelled');
@@ -272,6 +320,7 @@ export default function AdminTasksView() {
 
   const openCount = tasks.filter(t => t.status === 'pending' || t.status === 'assigned').length;
   const inProgressCount = tasks.filter(t => t.status === 'in_progress' || t.status === 'sms_requested').length;
+  const pendingReviewCount = tasks.filter(t => t.status === 'pending_review').length;
   const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'cancelled').length;
   const filteredTasks = getFilteredTasks();
 
@@ -406,7 +455,7 @@ export default function AdminTasksView() {
 
       {/* Status Filter Tabs */}
       <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-1">
           <TabsTrigger value="all" className="gap-2 py-2">
             Alle
             <Badge variant="secondary" className="ml-1">{tasks.length}</Badge>
@@ -418,12 +467,17 @@ export default function AdminTasksView() {
           </TabsTrigger>
           <TabsTrigger value="in_progress" className="gap-2 py-2">
             <Activity className="h-4 w-4" />
-            In Bearbeitung
+            In Arbeit
             <Badge variant="secondary" className="ml-1 bg-blue-500/20 text-blue-700 dark:text-blue-400">{inProgressCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="pending_review" className="gap-2 py-2 relative">
+            <Eye className="h-4 w-4" />
+            Prüfung
+            <Badge variant="secondary" className={`ml-1 ${pendingReviewCount > 0 ? 'bg-orange-500/20 text-orange-700 dark:text-orange-400 animate-pulse' : ''}`}>{pendingReviewCount}</Badge>
           </TabsTrigger>
           <TabsTrigger value="completed" className="gap-2 py-2">
             <CheckCircle className="h-4 w-4" />
-            Abgeschlossen
+            Fertig
             <Badge variant="secondary" className="ml-1 bg-green-500/20 text-green-700 dark:text-green-400">{completedCount}</Badge>
           </TabsTrigger>
         </TabsList>
@@ -481,6 +535,29 @@ export default function AdminTasksView() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {/* Pending Review Actions */}
+                      {task.status === 'pending_review' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/10"
+                            onClick={() => setReviewDialog({ open: true, task, action: 'approve' })}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Genehmigen
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1 border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-500/10"
+                            onClick={() => setReviewDialog({ open: true, task, action: 'reject' })}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Ablehnen
+                          </Button>
+                        </>
+                      )}
                       {!assignee && task.status === 'pending' && (
                         <Button
                           variant="outline"
@@ -846,6 +923,102 @@ export default function AdminTasksView() {
               </>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Task Dialog */}
+      <Dialog open={reviewDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setReviewDialog({ open: false, task: null, action: null });
+          setReviewNotes('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {reviewDialog.action === 'approve' ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  Auftrag genehmigen
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  Auftrag ablehnen
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {reviewDialog.task && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="font-medium">{reviewDialog.task.title}</p>
+                <p className="text-sm text-muted-foreground">{reviewDialog.task.customer_name}</p>
+                {reviewDialog.task.special_compensation && reviewDialog.task.special_compensation > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Euro className="h-4 w-4 text-emerald-500" />
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {reviewDialog.task.special_compensation.toFixed(2)} € Sondervergütung
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {reviewDialog.action === 'approve' ? (
+                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <p className="text-sm text-green-700 dark:text-green-400">
+                    Nach der Genehmigung wird die Sondervergütung als verrechnet markiert und der Mitarbeiter erhält eine Benachrichtigung.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400">
+                    Der Auftrag wird zur Überarbeitung zurückgewiesen und der Mitarbeiter erhält eine Benachrichtigung mit dem Ablehnungsgrund.
+                  </p>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label>{reviewDialog.action === 'approve' ? 'Anmerkung (optional)' : 'Ablehnungsgrund *'}</Label>
+                <Textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder={reviewDialog.action === 'approve' ? 'Optionale Anmerkung...' : 'Bitte Grund für die Ablehnung angeben...'}
+                  className="min-h-[100px]"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setReviewDialog({ open: false, task: null, action: null });
+                    setReviewNotes('');
+                  }}
+                >
+                  Abbrechen
+                </Button>
+                <Button 
+                  className={`flex-1 gap-2 ${reviewDialog.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                  onClick={reviewDialog.action === 'approve' ? handleApproveTask : handleRejectTask}
+                >
+                  {reviewDialog.action === 'approve' ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Genehmigen
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4" />
+                      Ablehnen
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

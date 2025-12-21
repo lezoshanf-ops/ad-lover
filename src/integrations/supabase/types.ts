@@ -338,6 +338,9 @@ export type Database = {
           id: string
           notes: string | null
           priority: Database["public"]["Enums"]["task_priority"]
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           special_compensation: number | null
           status: Database["public"]["Enums"]["task_status"]
           test_email: string | null
@@ -356,6 +359,9 @@ export type Database = {
           id?: string
           notes?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           special_compensation?: number | null
           status?: Database["public"]["Enums"]["task_status"]
           test_email?: string | null
@@ -374,6 +380,9 @@ export type Database = {
           id?: string
           notes?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           special_compensation?: number | null
           status?: Database["public"]["Enums"]["task_status"]
           test_email?: string | null
@@ -474,6 +483,10 @@ export type Database = {
     }
     Functions: {
       accept_task: { Args: { _task_id: string }; Returns: undefined }
+      approve_task: {
+        Args: { _review_notes?: string; _task_id: string }
+        Returns: undefined
+      }
       complete_task: {
         Args: { _progress_notes?: string; _task_id: string }
         Returns: undefined
@@ -507,6 +520,10 @@ export type Database = {
         Args: { _employee_name: string; _task_id: string; _task_title: string }
         Returns: undefined
       }
+      reject_task: {
+        Args: { _review_notes?: string; _task_id: string }
+        Returns: undefined
+      }
       update_user_status: { Args: { new_status: string }; Returns: undefined }
     }
     Enums: {
@@ -518,6 +535,7 @@ export type Database = {
         | "assigned"
         | "in_progress"
         | "sms_requested"
+        | "pending_review"
         | "completed"
         | "cancelled"
       time_entry_type: "check_in" | "check_out" | "pause_start" | "pause_end"
@@ -656,6 +674,7 @@ export const Constants = {
         "assigned",
         "in_progress",
         "sms_requested",
+        "pending_review",
         "completed",
         "cancelled",
       ],
