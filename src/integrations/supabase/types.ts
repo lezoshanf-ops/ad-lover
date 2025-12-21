@@ -291,6 +291,7 @@ export type Database = {
           test_password: string | null
           title: string
           updated_at: string
+          web_ident_url: string | null
         }
         Insert: {
           created_at?: string
@@ -308,6 +309,7 @@ export type Database = {
           test_password?: string | null
           title: string
           updated_at?: string
+          web_ident_url?: string | null
         }
         Update: {
           created_at?: string
@@ -325,6 +327,7 @@ export type Database = {
           test_password?: string | null
           title?: string
           updated_at?: string
+          web_ident_url?: string | null
         }
         Relationships: []
       }

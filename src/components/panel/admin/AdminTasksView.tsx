@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -64,7 +64,8 @@ export default function AdminTasksView() {
     priority: 'medium' as TaskPriority,
     special_compensation: '',
     test_email: '',
-    test_password: ''
+    test_password: '',
+    web_ident_url: ''
   });
 
   useEffect(() => {
@@ -145,6 +146,8 @@ export default function AdminTasksView() {
       return;
     }
 
+    const webIdentUrl = newTask.web_ident_url?.trim() || null;
+    
     const { error } = await supabase.from('tasks').insert({
       title: validation.data.title,
       description: validation.data.description,
@@ -155,6 +158,7 @@ export default function AdminTasksView() {
       special_compensation: validation.data.special_compensation,
       test_email: validation.data.test_email,
       test_password: validation.data.test_password,
+      web_ident_url: webIdentUrl,
       created_by: user?.id
     });
 
@@ -163,7 +167,7 @@ export default function AdminTasksView() {
     } else {
       toast({ title: 'Erfolg', description: 'Auftrag wurde erstellt.' });
       setIsDialogOpen(false);
-      setNewTask({ title: '', description: '', customer_name: '', customer_phone: '', deadline: '', priority: 'medium', special_compensation: '', test_email: '', test_password: '' });
+      setNewTask({ title: '', description: '', customer_name: '', customer_phone: '', deadline: '', priority: 'medium', special_compensation: '', test_email: '', test_password: '', web_ident_url: '' });
       fetchTasks();
     }
   };
@@ -311,6 +315,22 @@ export default function AdminTasksView() {
                     <Label>Test Passwort</Label>
                     <Input type="text" value={newTask.test_password} onChange={(e) => setNewTask({ ...newTask, test_password: e.target.value })} placeholder="Passwort123" />
                   </div>
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Web-Ident (Optional)
+                </p>
+                <div className="space-y-2">
+                  <Label>Web-Ident Link</Label>
+                  <Input 
+                    type="url" 
+                    value={newTask.web_ident_url} 
+                    onChange={(e) => setNewTask({ ...newTask, web_ident_url: e.target.value })} 
+                    placeholder="https://webident.example.com/verify/..." 
+                  />
+                  <p className="text-xs text-muted-foreground">Link zur Web-Ident-Verifizierung, falls erforderlich</p>
                 </div>
               </div>
               <Button onClick={handleCreateTask} className="w-full">Auftrag erstellen</Button>
@@ -462,6 +482,23 @@ export default function AdminTasksView() {
                           </span>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {task.web_ident_url && (
+                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-md">
+                      <p className="text-xs font-medium mb-2 text-cyan-700 dark:text-cyan-400 flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        Web-Ident erforderlich
+                      </p>
+                      <a 
+                        href={task.web_ident_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-sm text-cyan-600 dark:text-cyan-400 hover:underline"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Link öffnen
+                      </a>
                     </div>
                   )}
                   {assignee && (

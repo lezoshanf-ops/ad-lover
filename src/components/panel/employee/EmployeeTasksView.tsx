@@ -15,7 +15,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, ArrowUpRight, HandMetal, Undo2, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw
+  FileUp, Mail, Key, UserCheck, ArrowUpRight, HandMetal, Undo2, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -123,6 +123,7 @@ export default function EmployeeTasksView() {
     duration: string;
   }>({ open: false, task: null, duration: '' });
   const [resendingCode, setResendingCode] = useState<string | null>(null);
+  const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string }>({ open: false, url: '', taskTitle: '' });
   const { toast } = useToast();
   const { user } = useAuth();
   const tabContext = useTabContext();
@@ -688,6 +689,37 @@ export default function EmployeeTasksView() {
                   />
                 )}
 
+                {task.web_ident_url && (
+                  <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                    <p className="text-xs font-semibold text-cyan-700 dark:text-cyan-400 mb-3 uppercase tracking-wide flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Web-Ident erforderlich
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-cyan-500/50 text-cyan-600 hover:bg-cyan-500/10"
+                        onClick={() => setWebIdentDialog({ open: true, url: task.web_ident_url!, taskTitle: task.title })}
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                        Web-Ident im Panel öffnen
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2 text-cyan-600 hover:bg-cyan-500/10"
+                        asChild
+                      >
+                        <a href={task.web_ident_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          In neuem Tab öffnen
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {task.status !== 'completed' && task.status !== 'cancelled' && (
                   <>
                     <Separator />
@@ -867,6 +899,51 @@ export default function EmployeeTasksView() {
                 Zurück zu Aufträge
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Web-Ident Dialog with embedded iframe */}
+      <Dialog open={webIdentDialog.open} onOpenChange={(open) => setWebIdentDialog({ ...webIdentDialog, open })}>
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2 border-b bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-cyan-500" />
+                Web-Ident: {webIdentDialog.taskTitle}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer" className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Extern öffnen
+                  </a>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '' })}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <DialogDescription className="text-sm">
+              Führe die Web-Ident-Verifizierung hier durch. Falls die Seite nicht korrekt lädt, öffne sie in einem neuen Tab.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 h-full relative">
+            <iframe
+              src={webIdentDialog.url}
+              className="w-full h-[calc(90vh-100px)] border-0"
+              title="Web-Ident Verifizierung"
+              allow="camera; microphone; geolocation; fullscreen"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-presentation"
+            />
           </div>
         </DialogContent>
       </Dialog>
