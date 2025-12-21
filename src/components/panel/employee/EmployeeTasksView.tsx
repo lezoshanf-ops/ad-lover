@@ -693,24 +693,15 @@ export default function EmployeeTasksView() {
     }
 
     if (step === 4) {
-      // Request demo data (SMS) if not requested; stay on step 4
-      if (!task.smsRequest) {
-        await handleRequestSms(task.id);
-        // ensure digital flag is set, even if already
-        await updateWorkflow(task.id, { workflow_step: 4, workflow_digital: true });
-        return;
-      }
-
-      // If code already received -> proceed
+      // SMS is only requested in the Web-Ident window, not here
+      // Just check if code is available, otherwise inform user to use Web-Ident
       if (task.smsRequest?.sms_code) {
         await setWorkflowStep(task, 5);
         return;
       }
 
-      toast({
-        title: 'Demo-Daten ausstehend',
-        description: 'Der Code erscheint, sobald er weitergeleitet wurde.',
-      });
+      // Proceed to step 5 where Web-Ident opens and SMS can be requested there
+      await setWorkflowStep(task, 5);
       return;
     }
 

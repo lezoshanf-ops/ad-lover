@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PanelSidebar from './PanelSidebar';
 import PanelHeader from './PanelHeader';
 import { NotificationBell } from './NotificationBell';
-import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard, ClipboardCheck, Euro } from 'lucide-react';
+import { ClipboardList, Clock, FileText, Calendar, User, Bell, LayoutDashboard, ClipboardCheck, Euro, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import EmployeeDashboardView from './employee/EmployeeDashboardView';
@@ -16,6 +16,7 @@ import EmployeeProfileView from './employee/EmployeeProfileView';
 import EmployeeNotificationsView from './employee/EmployeeNotificationsView';
 import EmployeeEvaluationsView from './employee/EmployeeEvaluationsView';
 import EmployeeCompensationView from './employee/EmployeeCompensationView';
+import EmployeeChatView from './employee/EmployeeChatView';
 import { NotificationSettings } from './employee/NotificationSettings';
 import { cn } from '@/lib/utils';
 
@@ -162,6 +163,7 @@ export default function EmployeeDashboard() {
         { id: 'tasks', label: 'Meine Aufträge', icon: ClipboardList },
         { id: 'evaluations', label: 'Bewertungsbögen', icon: ClipboardCheck, badge: pendingEvaluations > 0 ? pendingEvaluations : undefined },
         { id: 'compensation', label: 'Sondervergütungen', icon: Euro },
+        { id: 'chat', label: 'Nachrichten', icon: MessageCircle },
         { id: 'documents', label: 'Meine Verträge', icon: FileText },
       ],
     },
@@ -186,6 +188,8 @@ export default function EmployeeDashboard() {
         return <EmployeeEvaluationsView />;
       case 'compensation':
         return <EmployeeCompensationView />;
+      case 'chat':
+        return <EmployeeChatView />;
       case 'time':
         return <EmployeeTimeView />;
       case 'documents':
