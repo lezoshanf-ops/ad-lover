@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Send, MessageCircle, ImagePlus, X } from 'lucide-react';
+import { Send, MessageCircle, ImagePlus, X, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
@@ -309,6 +309,22 @@ export default function EmployeeChatView() {
                             <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                           )}
                         </div>
+                        {/* Read receipt for own messages */}
+                        {isOwn && (
+                          <div className="flex items-center gap-1 mt-1">
+                            {msg.read_at ? (
+                              <div className="flex items-center gap-0.5 text-primary" title={`Gelesen um ${format(new Date(msg.read_at), 'HH:mm', { locale: de })}`}>
+                                <CheckCheck className="h-3.5 w-3.5" />
+                                <span className="text-[10px] text-muted-foreground">Gelesen</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-0.5 text-muted-foreground" title="Zugestellt">
+                                <Check className="h-3.5 w-3.5" />
+                                <span className="text-[10px]">Zugestellt</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
