@@ -82,7 +82,7 @@ export default function AdminChatView() {
   const { playNotificationSound } = useNotificationSound();
 
   // Use presence-based status tracking
-  const { getUserStatus } = useUserPresence({
+  const { getUserStatus, getLastSeen } = useUserPresence({
     userId: user?.id,
     userName: myProfile ? `${myProfile.first_name} ${myProfile.last_name}`.trim() : 'Admin',
     initialStatus: 'online',
@@ -556,7 +556,13 @@ export default function AdminChatView() {
                           {emp.lastMessage?.sender_id === user?.id ? 'Du: ' : ''}{lastMsgPreview}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground/60 mt-0.5">Keine Nachrichten</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">
+                          {empStatus === 'offline' && getLastSeen(emp.user_id) ? (
+                            `Zuletzt: ${formatDistanceToNow(new Date(getLastSeen(emp.user_id)!), { addSuffix: false, locale: de })}`
+                          ) : (
+                            'Keine Nachrichten'
+                          )}
+                        </p>
                       )}
                     </div>
                   </button>

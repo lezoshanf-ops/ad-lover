@@ -19,6 +19,7 @@ interface UseUserPresenceProps {
 interface UseUserPresenceReturn {
   onlineUsers: Map<string, PresenceState>;
   getUserStatus: (userId: string) => UserStatus;
+  getLastSeen: (userId: string) => string | null;
   setMyStatus: (status: UserStatus) => void;
 }
 
@@ -136,16 +137,81 @@ export function useUserPresence({
       }
     }, 30000); // Every 30 seconds
 
-    // Handle page visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // User switched tab - could set to 'away' after some time
-      } else {
-        // User came back - ensure we're still tracked
+    // Inactivity detection - set to 'away' after 5 minutes
+    let inactivityTimeout: NodeJS.Timeout | null = null;
+    let lastActivity = Date.now();
+
+    const resetInactivityTimer = () => {
+      lastActivity = Date.now();
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+      }
+      // If we're away due to inactivity, set back to online
+      if (myStatus === 'away') {
+        setMyStatusState('online');
+        updateDbStatus('online');
         if (channelRef.current) {
           channelRef.current.track({
             id: userId,
-            status: myStatus,
+            status: 'online',
+            lastSeen: new Date().toISOString(),
+            name: userName,
+          });
+        }
+      }
+      // Set timeout for 5 minutes
+      inactivityTimeout = setTimeout(() => {
+        if (myStatus === 'online') {
+          setMyStatusState('away');
+          updateDbStatus('away');
+          if (channelRef.current) {
+            channelRef.current.track({
+              id: userId,
+              status: 'away',
+              lastSeen: new Date().toISOString(),
+              name: userName,
+            });
+          }
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    };
+
+    // Activity events to track
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetInactivityTimer, { passive: true });
+    });
+
+    // Start initial timer
+    resetInactivityTimer();
+
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // User switched tab - set to away after a short delay
+        if (inactivityTimeout) clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+          if (myStatus === 'online') {
+            setMyStatusState('away');
+            updateDbStatus('away');
+            if (channelRef.current) {
+              channelRef.current.track({
+                id: userId,
+                status: 'away',
+                lastSeen: new Date().toISOString(),
+                name: userName,
+              });
+            }
+          }
+        }, 60000); // 1 minute when tab hidden
+      } else {
+        // User came back - reset to online
+        resetInactivityTimer();
+        if (channelRef.current) {
+          channelRef.current.track({
+            id: userId,
+            status: 'online',
             lastSeen: new Date().toISOString(),
             name: userName,
           });
@@ -166,6 +232,13 @@ export function useUserPresence({
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
       }
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+      }
+      
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetInactivityTimer);
+      });
       
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -193,9 +266,16 @@ export function useUserPresence({
     return presence.status;
   }, [onlineUsers]);
 
+  const getLastSeen = useCallback((targetUserId: string): string | null => {
+    const presence = onlineUsers.get(targetUserId);
+    if (!presence) return null;
+    return presence.lastSeen;
+  }, [onlineUsers]);
+
   return {
     onlineUsers,
     getUserStatus,
+    getLastSeen,
     setMyStatus,
   };
 }

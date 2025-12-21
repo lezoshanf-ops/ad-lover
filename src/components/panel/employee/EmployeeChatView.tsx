@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
@@ -80,7 +80,7 @@ export default function EmployeeChatView() {
   const { playNotificationSound } = useNotificationSound();
 
   // Use presence-based status tracking
-  const { getUserStatus } = useUserPresence({
+  const { getUserStatus, getLastSeen } = useUserPresence({
     userId: user?.id,
     userName: myProfile ? `${myProfile.first_name} ${myProfile.last_name}`.trim() : 'Mitarbeiter',
     initialStatus: 'online',
@@ -453,7 +453,14 @@ export default function EmployeeChatView() {
                   <p className="text-xs text-muted-foreground">
                     {getStatus(chatPartnerId!) === 'online' ? 'Online' : 
                      getStatus(chatPartnerId!) === 'away' ? 'Abwesend' :
-                     getStatus(chatPartnerId!) === 'busy' ? 'Beschäftigt' : 'Offline'}
+                     getStatus(chatPartnerId!) === 'busy' ? 'Beschäftigt' : 
+                     (() => {
+                       const lastSeen = getLastSeen(chatPartnerId!);
+                       if (lastSeen) {
+                         return `Zuletzt online ${formatDistanceToNow(new Date(lastSeen), { addSuffix: true, locale: de })}`;
+                       }
+                       return 'Offline';
+                     })()}
                   </p>
                 )}
               </div>

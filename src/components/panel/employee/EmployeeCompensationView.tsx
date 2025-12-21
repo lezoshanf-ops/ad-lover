@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Euro, Calendar, TrendingUp, CheckCircle2, Clock, ArrowUpRight, Download, FileSpreadsheet } from 'lucide-react';
+import { Euro, Calendar, TrendingUp, CheckCircle2, Clock, ArrowUpRight, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface CompletedTask {
   id: string;
@@ -69,6 +71,66 @@ export default function EmployeeCompensationView() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast({ title: 'Export erfolgreich', description: 'Die CSV-Datei wurde heruntergeladen.' });
+  };
+
+  const exportToPdf = () => {
+    const approvedTasks = tasks.filter(t => t.status === 'completed');
+    if (approvedTasks.length === 0) {
+      toast({ title: 'Keine Daten', description: 'Keine genehmigten Aufträge zum Exportieren.', variant: 'destructive' });
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Sondervergütungen', 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Erstellt am ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de })}`, 14, 30);
+
+    // Table
+    const tableData = approvedTasks.map(task => [
+      format(parseISO(task.reviewed_at || task.updated_at), 'dd.MM.yyyy', { locale: de }),
+      task.title,
+      task.customer_name,
+      `${task.special_compensation?.toFixed(2)} €`
+    ]);
+
+    autoTable(doc, {
+      head: [['Datum', 'Auftrag', 'Kunde', 'Vergütung']],
+      body: tableData,
+      startY: 40,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [220, 38, 38],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 10,
+        cellPadding: 4
+      },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 30, halign: 'right' }
+      }
+    });
+
+    // Total
+    const finalY = (doc as any).lastAutoTable.finalY || 40;
+    doc.setFontSize(12);
+    doc.setTextColor(40, 40, 40);
+    doc.setFont(undefined as any, 'bold');
+    doc.text(`Gesamt: ${totalCompensation.toFixed(2)} €`, 14, finalY + 15);
+
+    // Save
+    doc.save(`sondervergütungen_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast({ title: 'Export erfolgreich', description: 'Die PDF-Datei wurde heruntergeladen.' });
   };
 
   useEffect(() => {
@@ -160,14 +222,25 @@ export default function EmployeeCompensationView() {
             Übersicht deiner verrechneten Sondervergütungen
           </p>
         </div>
-        <Button
-          onClick={exportToCsv}
-          disabled={tasks.filter(t => t.status === 'completed').length === 0}
-          className="gap-2"
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          CSV Export
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={exportToCsv}
+            variant="outline"
+            disabled={tasks.filter(t => t.status === 'completed').length === 0}
+            className="gap-2"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            CSV
+          </Button>
+          <Button
+            onClick={exportToPdf}
+            disabled={tasks.filter(t => t.status === 'completed').length === 0}
+            className="gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
