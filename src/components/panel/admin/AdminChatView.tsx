@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Send, MessageCircle, ImagePlus, X, Users, Check, CheckCheck, Search, Reply, CornerDownRight, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Send, MessageCircle, ImagePlus, X, Users, Check, CheckCheck, Search, Reply, CornerDownRight, Pencil, Trash2, MoreVertical, Pin, PinOff } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
@@ -42,13 +42,19 @@ interface ProfileWithStatus extends Profile {
 interface ExtendedChatMessage extends ChatMessage {
   image_url?: string | null;
   updated_at?: string | null;
+  is_pinned?: boolean;
+}
+
+interface EmployeeWithChat extends ProfileWithStatus {
+  unreadCount: number;
+  lastMessage?: ExtendedChatMessage | null;
 }
 
 export default function AdminChatView() {
   const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [profiles, setProfiles] = useState<Record<string, ProfileWithStatus>>({});
-  const [employees, setEmployees] = useState<ProfileWithStatus[]>([]);
+  const [employees, setEmployees] = useState<EmployeeWithChat[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -142,6 +148,11 @@ export default function AdminChatView() {
               markMessageAsRead(newMsg.id);
             }
           }
+          
+          // Update employee list with new message
+          if (!newMsg.is_group_message && (newMsg.sender_id !== user.id || newMsg.recipient_id !== selectedEmployee)) {
+            fetchEmployees();
+          }
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
           const updatedMsg = payload.new as ExtendedChatMessage;
@@ -211,6 +222,8 @@ export default function AdminChatView() {
   };
 
   const fetchEmployees = async () => {
+    if (!user) return;
+    
     const { data: roles } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -224,7 +237,46 @@ export default function AdminChatView() {
         .in('user_id', employeeIds);
       
       if (profileData) {
-        setEmployees(profileData.map(p => ({ ...p, status: (p as any).status || 'offline' })) as ProfileWithStatus[]);
+        // Fetch unread counts and last messages for each employee
+        const employeesWithChat: EmployeeWithChat[] = await Promise.all(
+          profileData.map(async (p) => {
+            // Get unread count
+            const { count } = await supabase
+              .from('chat_messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('sender_id', p.user_id)
+              .eq('recipient_id', user.id)
+              .is('read_at', null)
+              .eq('is_group_message', false);
+            
+            // Get last message
+            const { data: lastMsgData } = await supabase
+              .from('chat_messages')
+              .select('*')
+              .eq('is_group_message', false)
+              .or(`and(sender_id.eq.${user.id},recipient_id.eq.${p.user_id}),and(sender_id.eq.${p.user_id},recipient_id.eq.${user.id})`)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            return {
+              ...p,
+              status: (p as any).status || 'offline',
+              unreadCount: count || 0,
+              lastMessage: lastMsgData?.[0] as ExtendedChatMessage || null
+            };
+          })
+        );
+        
+        // Sort: unread first, then by last message time
+        employeesWithChat.sort((a, b) => {
+          if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+          if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+          const aTime = a.lastMessage?.created_at || '0';
+          const bTime = b.lastMessage?.created_at || '0';
+          return bTime.localeCompare(aTime);
+        });
+        
+        setEmployees(employeesWithChat);
       }
     }
   };
@@ -358,6 +410,23 @@ export default function AdminChatView() {
     setDeleteMessageId(null);
   };
 
+  const handlePinMessage = async (msgId: string, isPinned: boolean) => {
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ is_pinned: !isPinned })
+      .eq('id', msgId);
+    
+    if (error) {
+      toast({ title: 'Fehler', description: 'Nachricht konnte nicht gepinnt werden.', variant: 'destructive' });
+    } else {
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !isPinned } : m));
+      toast({ 
+        title: !isPinned ? 'Nachricht gepinnt' : 'Nachricht entpinnt', 
+        description: !isPinned ? 'Die Nachricht wurde als wichtig markiert.' : 'Die Markierung wurde entfernt.'
+      });
+    }
+  };
+
   const startEditing = (msg: ExtendedChatMessage) => {
     setEditingMessage(msg);
     setEditText(msg.message || '');
@@ -426,28 +495,55 @@ export default function AdminChatView() {
             <ScrollArea className="h-[calc(100vh-22rem)]">
               {employees.map((emp) => {
                 const empStatus = getStatus(emp.user_id);
+                const lastMsgPreview = emp.lastMessage?.message 
+                  ? (emp.lastMessage.message.length > 30 
+                    ? emp.lastMessage.message.substring(0, 30) + '...' 
+                    : emp.lastMessage.message)
+                  : emp.lastMessage?.image_url ? '📷 Bild' : null;
+                const lastMsgTime = emp.lastMessage?.created_at 
+                  ? formatDistanceToNow(new Date(emp.lastMessage.created_at), { addSuffix: true, locale: de })
+                  : null;
+                
                 return (
                   <button
                     key={emp.user_id}
                     onClick={() => setSelectedEmployee(emp.user_id)}
-                    className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors border-b ${
+                    className={`w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors border-b ${
                       selectedEmployee === emp.user_id ? 'bg-muted' : ''
-                    }`}
+                    } ${emp.unreadCount > 0 ? 'bg-primary/5' : ''}`}
                   >
-                    <div className="relative">
-                      <Avatar className="h-10 w-10">
+                    <div className="relative shrink-0">
+                      <Avatar className="h-11 w-11">
                         <AvatarImage src={getProfileAvatar(emp.user_id) || ''} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                           {emp.first_name?.[0]}{emp.last_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
                       <span 
                         className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${getStatusColor(empStatus)}`}
                       />
+                      {emp.unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-sm">
+                          {emp.unreadCount > 9 ? '9+' : emp.unreadCount}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium text-sm">{emp.first_name} {emp.last_name}</p>
-                      <p className="text-xs text-muted-foreground">{emp.email}</p>
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`font-medium text-sm truncate ${emp.unreadCount > 0 ? 'text-foreground' : ''}`}>
+                          {emp.first_name} {emp.last_name}
+                        </p>
+                        {lastMsgTime && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">{lastMsgTime}</span>
+                        )}
+                      </div>
+                      {lastMsgPreview ? (
+                        <p className={`text-xs truncate mt-0.5 ${emp.unreadCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                          {emp.lastMessage?.sender_id === user?.id ? 'Du: ' : ''}{lastMsgPreview}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">Keine Nachrichten</p>
+                      )}
                     </div>
                   </button>
                 );
@@ -601,8 +697,15 @@ export default function AdminChatView() {
                                           isOwn
                                             ? 'bg-primary text-primary-foreground rounded-br-sm'
                                             : 'bg-muted rounded-bl-sm'
-                                        }`}
+                                        } ${msg.is_pinned ? 'ring-2 ring-amber-400/50' : ''}`}
                                       >
+                                        {/* Pin indicator */}
+                                        {msg.is_pinned && (
+                                          <div className={`flex items-center gap-1 mb-1.5 ${isOwn ? 'text-primary-foreground/70' : 'text-amber-600'}`}>
+                                            <Pin className="h-3 w-3" />
+                                            <span className="text-[10px] font-medium">Gepinnt</span>
+                                          </div>
+                                        )}
                                         {/* Quote preview if message starts with > */}
                                         {msg.message?.startsWith('>') && (
                                           <div className={`flex items-start gap-1 mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
@@ -628,8 +731,15 @@ export default function AdminChatView() {
                                       </div>
                                     {/* Action buttons */}
                                     <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ${
-                                      isOwn ? '-left-20' : '-right-20'
+                                      isOwn ? '-left-24' : '-right-24'
                                     }`}>
+                                      <button
+                                        onClick={() => handlePinMessage(msg.id, !!msg.is_pinned)}
+                                        className={`p-1.5 rounded-full bg-background border shadow-sm hover:bg-muted ${msg.is_pinned ? 'text-amber-600' : ''}`}
+                                        title={msg.is_pinned ? 'Entpinnen' : 'Pinnen'}
+                                      >
+                                        {msg.is_pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                      </button>
                                       <button
                                         onClick={() => setReplyingTo(msg)}
                                         className="p-1.5 rounded-full bg-background border shadow-sm hover:bg-muted"
