@@ -59,6 +59,8 @@ export default function AdminTasksView() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'deadline'>('newest');
   const [reviewDialog, setReviewDialog] = useState<{ open: boolean; task: Task | null; action: 'approve' | 'reject' | null }>({ open: false, task: null, action: null });
   const [reviewNotes, setReviewNotes] = useState('');
+  const [statusRequestDialog, setStatusRequestDialog] = useState<{ open: boolean; task: Task | null; assignee: Profile | null }>({ open: false, task: null, assignee: null });
+  const [statusRequestMessage, setStatusRequestMessage] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -539,18 +541,18 @@ export default function AdminTasksView() {
                       {task.status === 'pending_review' && (
                         <>
                           <Button
-                            variant="outline"
+                            variant="soft-success"
                             size="sm"
-                            className="h-8 text-xs gap-1 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/10"
+                            className="h-8 text-xs gap-1.5"
                             onClick={() => setReviewDialog({ open: true, task, action: 'approve' })}
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" />
                             Genehmigen
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="soft-danger"
                             size="sm"
-                            className="h-8 text-xs gap-1 border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-500/10"
+                            className="h-8 text-xs gap-1.5"
                             onClick={() => setReviewDialog({ open: true, task, action: 'reject' })}
                           >
                             <XCircle className="h-3.5 w-3.5" />
@@ -560,7 +562,7 @@ export default function AdminTasksView() {
                       )}
                       {!assignee && task.status === 'pending' && (
                         <Button
-                          variant="outline"
+                          variant="elegant-outline"
                           size="sm"
                           className="h-8 text-xs"
                           onClick={() => {
@@ -655,25 +657,15 @@ export default function AdminTasksView() {
                   {assignee && (task.status === 'in_progress' || task.status === 'sms_requested') && (
                     <div className="mt-2 pt-2 border-t border-border/50">
                       <Button
-                        variant="ghost"
+                        variant="soft"
                         size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={async () => {
-                          const { error } = await supabase.from('notifications').insert({
-                            user_id: assignment!.user_id,
-                            title: 'Statusanfrage',
-                            message: `Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt des Auftrags "${task.title}".`,
-                            type: 'status_request',
-                            related_task_id: task.id
-                          });
-                          if (error) {
-                            toast({ title: 'Fehler', description: 'Statusanfrage fehlgeschlagen.', variant: 'destructive' });
-                          } else {
-                            toast({ title: 'Status angefordert', description: `Anfrage an ${assignee.first_name} gesendet.` });
-                          }
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => {
+                          setStatusRequestDialog({ open: true, task, assignee });
+                          setStatusRequestMessage('');
                         }}
                       >
-                        <MessageCircle className="h-3 w-3" />
+                        <MessageCircle className="h-3.5 w-3.5" />
                         Status anfragen
                       </Button>
                     </div>
@@ -1015,6 +1007,93 @@ export default function AdminTasksView() {
                       Ablehnen
                     </>
                   )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Request Dialog */}
+      <Dialog open={statusRequestDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setStatusRequestDialog({ open: false, task: null, assignee: null });
+          setStatusRequestMessage('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          {statusRequestDialog.task && statusRequestDialog.assignee && (
+            <div className="space-y-4">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  Status anfragen
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-3">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium">{statusRequestDialog.task.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mitarbeiter: {statusRequestDialog.assignee.first_name} {statusRequestDialog.assignee.last_name}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Nachricht an Mitarbeiter (optional)</Label>
+                  <Textarea
+                    placeholder="z.B. Wie ist der aktuelle Stand? Gibt es Probleme?"
+                    value={statusRequestMessage}
+                    onChange={(e) => setStatusRequestMessage(e.target.value)}
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setStatusRequestDialog({ open: false, task: null, assignee: null });
+                    setStatusRequestMessage('');
+                  }}
+                >
+                  Abbrechen
+                </Button>
+                <Button 
+                  className="flex-1 gap-2"
+                  onClick={async () => {
+                    const task = statusRequestDialog.task!;
+                    const assignee = statusRequestDialog.assignee!;
+                    
+                    const assignment = assignments.find(a => a.task_id === task.id);
+                    if (!assignment) return;
+                    
+                    const defaultMessage = `Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt des Auftrags "${task.title}".`;
+                    const fullMessage = statusRequestMessage.trim() 
+                      ? `${defaultMessage}\n\nNachricht vom Admin: ${statusRequestMessage.trim()}`
+                      : defaultMessage;
+                    
+                    const { error } = await supabase.from('notifications').insert({
+                      user_id: assignment.user_id,
+                      title: 'Statusanfrage',
+                      message: fullMessage,
+                      type: 'status_request',
+                      related_task_id: task.id
+                    });
+                    
+                    if (error) {
+                      toast({ title: 'Fehler', description: 'Statusanfrage fehlgeschlagen.', variant: 'destructive' });
+                    } else {
+                      toast({ title: 'Status angefordert', description: `Anfrage an ${assignee.first_name} gesendet.` });
+                      setStatusRequestDialog({ open: false, task: null, assignee: null });
+                      setStatusRequestMessage('');
+                    }
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Anfragen
                 </Button>
               </div>
             </div>

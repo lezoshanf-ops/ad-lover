@@ -187,7 +187,6 @@ export default function EmployeeCompensationView() {
                     {month.month} {month.year}
                   </CardTitle>
                   <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-lg px-3 py-1">
-                    <Euro className="h-4 w-4 mr-1" />
                     {month.total.toFixed(2)} €
                   </Badge>
                 </div>
@@ -249,7 +248,6 @@ export default function EmployeeCompensationView() {
                       <p className="text-sm text-muted-foreground">{task.customer_name}</p>
                     </div>
                     <Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400">
-                      <Euro className="h-3 w-3 mr-1" />
                       {task.special_compensation?.toFixed(2)} €
                     </Badge>
                   </div>

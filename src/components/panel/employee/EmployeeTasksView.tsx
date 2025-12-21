@@ -999,16 +999,15 @@ export default function EmployeeTasksView() {
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             {pendingReviewTasks.map((task) => (
-              <Card key={task.id} className="overflow-hidden border-orange-500/20 bg-orange-500/5">
+              <Card key={task.id} className="overflow-hidden border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 hover:border-orange-500/30 transition-all duration-300">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                    <Badge className="bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-500/30">
                       In Überprüfung
                     </Badge>
                     {task.special_compensation && task.special_compensation > 0 && (
-                      <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                        <Euro className="h-3 w-3 mr-1" />
-                        {task.special_compensation}€ ausstehend
+                      <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                        {task.special_compensation.toFixed(2)} € ausstehend
                       </Badge>
                     )}
                   </div>
@@ -1030,16 +1029,15 @@ export default function EmployeeTasksView() {
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             {completedTasks.slice(0, 4).map((task) => (
-              <Card key={task.id} className="overflow-hidden border-green-500/20 bg-green-500/5">
+              <Card key={task.id} className="overflow-hidden border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/30 transition-all duration-300 cursor-default">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge className="bg-green-500/20 text-green-700 dark:text-green-400">
+                    <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30">
                       Genehmigt
                     </Badge>
                     {task.special_compensation && task.special_compensation > 0 && (
-                      <Badge className="bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-semibold">
-                        <Euro className="h-3 w-3 mr-1" />
-                        {task.special_compensation}€ verrechnet ✓
+                      <Badge className="bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-600/30 font-medium">
+                        {task.special_compensation.toFixed(2)} € verrechnet
                       </Badge>
                     )}
                   </div>
