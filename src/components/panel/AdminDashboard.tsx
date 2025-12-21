@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import PanelLayout from './PanelLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import PanelSidebar from './PanelSidebar';
+import PanelHeader from './PanelHeader';
 import AdminTasksView from './admin/AdminTasksView';
 import AdminUsersView from './admin/AdminUsersView';
 import AdminSmsView from './admin/AdminSmsView';
 import AdminVacationView from './admin/AdminVacationView';
 import AdminStatsView from './admin/AdminStatsView';
 import AdminActivityView from './admin/AdminActivityView';
-import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, Activity } from 'lucide-react';
+import AdminChatView from './admin/AdminChatView';
+import { ClipboardList, Users, MessageSquare, Calendar, BarChart3, Activity, LayoutDashboard, MessageCircle, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTabState] = useState(() => {
     return sessionStorage.getItem('adminActiveTab') || 'tasks';
   });
   const [pendingSmsCount, setPendingSmsCount] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -28,18 +31,15 @@ export default function AdminDashboard() {
 
   // Save scroll position continuously and restore on mount/visibility change
   useEffect(() => {
-    // Restore scroll position on mount with smooth behavior
     const savedPosition = sessionStorage.getItem('adminScrollPosition');
     if (savedPosition) {
       setTimeout(() => window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' }), 100);
     }
 
-    // Save scroll position on scroll
     const handleScroll = () => {
       sessionStorage.setItem('adminScrollPosition', window.scrollY.toString());
     };
 
-    // Restore scroll position when tab becomes visible again
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         const pos = sessionStorage.getItem('adminScrollPosition');
@@ -61,7 +61,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchPendingSmsCount();
 
-    // Listen for new SMS requests
     const smsChannel = supabase
       .channel('admin-sms-notifications')
       .on('postgres_changes', { 
@@ -87,7 +86,6 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
-    // Listen for task completion notifications
     const notificationsChannel = supabase
       .channel('admin-task-notifications')
       .on('postgres_changes', { 
@@ -108,7 +106,7 @@ export default function AdminDashboard() {
       supabase.removeChannel(smsChannel);
       supabase.removeChannel(notificationsChannel);
     };
-  }, [user]);
+  }, [user, toast]);
 
   const fetchPendingSmsCount = async () => {
     const { count } = await supabase
@@ -121,65 +119,108 @@ export default function AdminDashboard() {
 
   const handleLogoClick = () => {
     setActiveTab('tasks');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const menuSections = [
+    {
+      title: 'ÜBERSICHT',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'tasks', label: 'Aufträge', icon: ClipboardList },
+        { id: 'users', label: 'Mitarbeiter', icon: Users },
+      ],
+    },
+    {
+      title: 'ANFRAGEN',
+      items: [
+        { id: 'sms', label: 'SMS-Codes', icon: MessageSquare, badge: pendingSmsCount },
+        { id: 'vacation', label: 'Urlaubsanträge', icon: Calendar },
+      ],
+    },
+    {
+      title: 'KOMMUNIKATION',
+      items: [
+        { id: 'chat', label: 'Chat', icon: MessageCircle },
+        { id: 'activity', label: 'Aktivität', icon: Activity },
+      ],
+    },
+    {
+      title: 'VERWALTUNG',
+      items: [
+        { id: 'stats', label: 'Statistiken', icon: BarChart3 },
+        { id: 'settings', label: 'Einstellungen', icon: Settings },
+      ],
+    },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+      case 'tasks':
+        return <AdminTasksView />;
+      case 'users':
+        return <AdminUsersView />;
+      case 'activity':
+        return <AdminActivityView />;
+      case 'sms':
+        return <AdminSmsView />;
+      case 'vacation':
+        return <AdminVacationView />;
+      case 'stats':
+        return <AdminStatsView />;
+      case 'chat':
+        return <AdminChatView />;
+      case 'settings':
+        return (
+          <div className="text-center py-12">
+            <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold">Einstellungen</h2>
+            <p className="text-muted-foreground">Einstellungen werden bald verfügbar sein.</p>
+          </div>
+        );
+      default:
+        return <AdminTasksView />;
+    }
   };
 
   return (
-    <PanelLayout 
-      title="Admin-Panel" 
-      onLogoClick={handleLogoClick}
-    >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="glass-panel grid w-full grid-cols-6 lg:w-auto lg:inline-flex p-1.5 gap-1">
-          <TabsTrigger value="tasks" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all">
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">Aufträge</span>
-          </TabsTrigger>
-          <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">Mitarbeiter</span>
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">Aktivität</span>
-          </TabsTrigger>
-          <TabsTrigger value="sms" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all relative">
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">SMS-Codes</span>
-            {pendingSmsCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs animate-pulse">
-                {pendingSmsCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="vacation" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all">
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">Anträge</span>
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow transition-all">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline font-medium">Statistik</span>
-          </TabsTrigger>
-        </TabsList>
+    <div className="min-h-screen bg-background flex w-full">
+      <PanelSidebar
+        sections={menuSections}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogoClick={handleLogoClick}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
 
-        <TabsContent value="tasks">
-          <AdminTasksView />
-        </TabsContent>
-        <TabsContent value="users">
-          <AdminUsersView />
-        </TabsContent>
-        <TabsContent value="activity">
-          <AdminActivityView />
-        </TabsContent>
-        <TabsContent value="sms">
-          <AdminSmsView />
-        </TabsContent>
-        <TabsContent value="vacation">
-          <AdminVacationView />
-        </TabsContent>
-        <TabsContent value="stats">
-          <AdminStatsView />
-        </TabsContent>
-      </Tabs>
-    </PanelLayout>
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-h-screen transition-all duration-300",
+          sidebarCollapsed ? "ml-0 md:ml-16" : "ml-0 md:ml-64"
+        )}
+      >
+        <PanelHeader
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          showSearch={true}
+          searchPlaceholder="Mitarbeiter, Aufträge suchen..."
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+        />
+
+        <main className="flex-1 p-4 md:p-6 lg:p-8 animate-fade-in">
+          {renderContent()}
+        </main>
+      </div>
+
+      {/* Mobile overlay */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+    </div>
   );
 }
