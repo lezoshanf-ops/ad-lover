@@ -870,13 +870,18 @@ export default function EmployeeTasksView() {
                   {/* Card Header */}
                   <div className="p-4 pb-3">
                     <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
                           <Clock className="h-4 w-4 text-primary-foreground" />
                         </div>
                         <Badge variant="outline" className={statusConfig[task.status].color}>
                           {statusConfig[task.status].label}
                         </Badge>
+                        {task.special_compensation && task.special_compensation > 0 && (
+                          <Badge variant="outline" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                            {task.special_compensation.toFixed(2)} €
+                          </Badge>
+                        )}
                       </div>
                       {task.deadline && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -1096,8 +1101,7 @@ export default function EmployeeTasksView() {
                           </Badge>
                           {selectedTask.special_compensation && selectedTask.special_compensation > 0 && (
                             <Badge variant="outline" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                              <Euro className="h-3 w-3 mr-1" />
-                              {selectedTask.special_compensation}€
+                              {selectedTask.special_compensation.toFixed(2)} €
                             </Badge>
                           )}
                           <Badge variant="outline" className={cn(priorityConfig[selectedTask.priority].color, "animate-pulse")}>
@@ -1114,20 +1118,6 @@ export default function EmployeeTasksView() {
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedTask.description}</p>
                       </div>
                     )}
-
-                    {/* Web Ident URL - Show without link */}
-                    {selectedTask.web_ident_url && (
-                      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-primary" />
-                          <span className="font-medium">Webseite verfügbar</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Die Webseite wird im Auftragsschritt 5 geöffnet.
-                        </p>
-                      </div>
-                    )}
-
                     {/* Test credentials - only visible from step 4 onwards */}
                     {(selectedTask.test_email || selectedTask.test_password) && getWorkflowStep(selectedTask) >= 4 && (
                       <div className="p-4 bg-info/10 rounded-lg border border-info/20">
