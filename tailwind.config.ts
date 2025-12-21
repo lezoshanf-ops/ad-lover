@@ -69,6 +69,12 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        "accent-red": {
+          DEFAULT: "hsl(var(--accent-red))",
+          light: "hsl(var(--accent-red-light))",
+          dark: "hsl(var(--accent-red-dark))",
+          muted: "hsl(var(--accent-red-muted))",
+        },
         status: {
           online: "hsl(var(--status-online))",
           away: "hsl(var(--status-away))",
