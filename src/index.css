@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Primary - Red accent */
-    --primary: 0 84% 60%;
+    /* Primary - Professional blue accent */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary */
@@ -39,7 +39,7 @@
     /* Border & Input & Ring */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 0 84% 60%;
+    --ring: 217 91% 60%;
     
     /* Sidebar - Dark theme for sidebar */
     --sidebar: 222 47% 11%;
@@ -56,22 +56,22 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
     
-    /* Employee panel accent - warm rose tones */
-    --employee-accent: 350 80% 55%;
-    --employee-accent-light: 350 80% 95%;
+    /* Employee panel accent - professional blue tones */
+    --employee-accent: 217 91% 60%;
+    --employee-accent-light: 217 91% 95%;
     --employee-accent-foreground: 0 0% 100%;
     
     /* Custom gradient tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 84%, 60%) 0%, hsl(350, 80%, 55%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(230, 80%, 55%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(350, 30%, 98%) 100%);
-    --gradient-employee: linear-gradient(135deg, hsl(350, 80%, 55%) 0%, hsl(0, 84%, 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(217, 30%, 98%) 100%);
+    --gradient-employee: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(230, 80%, 55%) 100%);
     
     /* Shadow tokens */
     --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-glow: 0 0 20px rgba(239, 68, 68, 0.3);
-    --shadow-rose: 0 0 20px rgba(244, 63, 94, 0.25);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+    --shadow-blue: 0 0 20px rgba(59, 130, 246, 0.25);
 
     --radius: 0.75rem;
   }
@@ -87,8 +87,8 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
     
-    /* Primary - Red accent */
-    --primary: 0 84% 60%;
+    /* Primary - Professional blue accent */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary */
@@ -110,7 +110,7 @@
     /* Border & Input & Ring */
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 0 84% 60%;
+    --ring: 217 91% 60%;
     
     /* Sidebar - Dark theme for sidebar */
     --sidebar: 222 47% 8%;
@@ -127,22 +127,22 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
     
-    /* Employee panel accent - warm rose tones */
-    --employee-accent: 350 80% 60%;
-    --employee-accent-light: 350 50% 20%;
+    /* Employee panel accent - professional blue tones */
+    --employee-accent: 217 91% 65%;
+    --employee-accent-light: 217 50% 20%;
     --employee-accent-foreground: 0 0% 100%;
     
     /* Custom gradient tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 84%, 60%) 0%, hsl(350, 80%, 55%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(230, 80%, 55%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(217, 33%, 17%) 100%);
-    --gradient-employee: linear-gradient(135deg, hsl(350, 80%, 55%) 0%, hsl(0, 84%, 60%) 100%);
+    --gradient-employee: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(230, 80%, 55%) 100%);
     
     /* Shadow tokens */
     --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.3), 0 10px 20px -2px rgba(0, 0, 0, 0.2);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-    --shadow-glow: 0 0 20px rgba(239, 68, 68, 0.4);
-    --shadow-rose: 0 0 20px rgba(244, 63, 94, 0.35);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.4);
+    --shadow-blue: 0 0 20px rgba(59, 130, 246, 0.35);
   }
 }
 

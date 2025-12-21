@@ -94,15 +94,15 @@ function SmsCodeDisplay({
 const priorityConfig: Record<TaskPriority, { color: string; label: string; icon: string }> = {
   low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30', label: 'Niedrig', icon: '○' },
   medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30', label: 'Mittel', icon: '◐' },
-  high: { color: 'bg-red-100 text-red-800 dark:bg-red-600/30 dark:text-red-300 border border-red-400 dark:border-red-500/50', label: 'Hoch', icon: '●' },
-  urgent: { color: 'bg-red-200 text-red-900 dark:bg-red-700/40 dark:text-red-200 border border-red-500 dark:border-red-600/60', label: 'Dringend', icon: '⬤' }
+  high: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-600/30 dark:text-orange-300 border border-orange-400 dark:border-orange-500/50', label: 'Hoch', icon: '●' },
+  urgent: { color: 'bg-orange-200 text-orange-900 dark:bg-orange-700/40 dark:text-orange-200 border border-orange-500 dark:border-orange-600/60', label: 'Dringend', icon: '⬤' }
 };
 
 const statusConfig: Record<TaskStatus, { color: string; label: string }> = {
-  pending: { color: 'bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30', label: 'Ausstehend' },
-  assigned: { color: 'bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30', label: 'Ausstehend' },
+  pending: { color: 'bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30', label: 'Ausstehend' },
+  assigned: { color: 'bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30', label: 'Ausstehend' },
   in_progress: { color: 'bg-primary/20 text-primary border border-primary/30', label: 'In Bearbeitung' },
-  sms_requested: { color: 'bg-rose-600/20 text-rose-700 dark:text-rose-400 border border-rose-600/30', label: 'SMS angefordert' },
+  sms_requested: { color: 'bg-sky-600/20 text-sky-700 dark:text-sky-400 border border-sky-600/30', label: 'SMS angefordert' },
   completed: { color: 'bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30', label: 'Abgeschlossen' },
   cancelled: { color: 'bg-destructive/20 text-destructive border border-destructive/30', label: 'Storniert' }
 };
@@ -729,14 +729,14 @@ export default function EmployeeTasksView() {
             const hasVideoChat = task.assignment?.accepted_at;
             
             return (
-              <Card key={task.id} className="overflow-hidden hover:shadow-lg transition-all border-rose-500/10 hover:border-rose-500/20">
-                <CardContent className="p-0 bg-gradient-to-br from-background to-rose-50/30 dark:to-rose-950/10">
+              <Card key={task.id} className="overflow-hidden hover:shadow-lg transition-all border-primary/10 hover:border-primary/20">
+                <CardContent className="p-0 bg-gradient-to-br from-background to-primary/5 dark:to-primary/5">
                   {/* Card Header */}
                   <div className="p-4 pb-3">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-primary flex items-center justify-center">
-                          <Clock className="h-4 w-4 text-white" />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-primary-foreground" />
                         </div>
                         <Badge variant="outline" className={statusConfig[task.status].color}>
                           {statusConfig[task.status].label}
@@ -769,13 +769,13 @@ export default function EmployeeTasksView() {
                   
                   {/* Progress bar */}
                   <div className="px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm text-rose-600 dark:text-rose-400">
+                    <div className="flex items-center gap-2 text-sm text-primary">
                       <Clock className="h-4 w-4" />
                       <span>Geschätzt: 5h</span>
                     </div>
-                    <div className="mt-2 h-2 bg-rose-100 dark:bg-rose-900/30 rounded-full overflow-hidden">
+                    <div className="mt-2 h-2 bg-primary/10 dark:bg-primary/20 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-rose-500 to-primary rounded-full transition-all"
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all"
                         style={{ width: task.assignment?.accepted_at ? '50%' : '10%' }}
                       />
                     </div>
