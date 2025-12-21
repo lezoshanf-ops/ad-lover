@@ -135,6 +135,7 @@ export default function EmployeeTasksView() {
     duration: string;
   }>({ open: false, task: null, duration: '' });
   const [resendingCode, setResendingCode] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string }>({ open: false, url: '', taskTitle: '' });
   const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
   const { toast } = useToast();
@@ -747,9 +748,18 @@ export default function EmployeeTasksView() {
               className="pl-10 w-48"
             />
           </div>
-          <Button variant="outline" onClick={() => fetchTasks()} className="gap-2">
-            <RefreshCcw className="h-4 w-4" />
-            Aktualisieren
+          <Button 
+            variant="outline" 
+            onClick={async () => {
+              setIsRefreshing(true);
+              await fetchTasks();
+              setTimeout(() => setIsRefreshing(false), 500);
+            }} 
+            className="gap-2"
+            disabled={isRefreshing}
+          >
+            <RefreshCcw className={cn("h-4 w-4 transition-transform", isRefreshing && "animate-spin")} />
+            {isRefreshing ? 'Lädt...' : 'Aktualisieren'}
           </Button>
         </div>
       </div>
@@ -813,17 +823,40 @@ export default function EmployeeTasksView() {
                     </div>
                   )}
                   
-                  {/* Progress bar */}
-                  <div className="px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm text-primary">
+                  {/* Step Progress Overview */}
+                  {task.assignment?.accepted_at && (
+                    <div className="px-4 py-3 border-t border-border/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-muted-foreground">Fortschritt</span>
+                        <span className="text-xs font-semibold text-primary">
+                          Schritt {(task.assignment as any)?.workflow_step || 1} / 8
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
+                          const currentStep = (task.assignment as any)?.workflow_step || 1;
+                          const isDone = step < currentStep;
+                          const isActive = step === currentStep;
+                          return (
+                            <div
+                              key={step}
+                              className={cn(
+                                'flex-1 h-2 rounded-full transition-colors',
+                                isDone ? 'bg-primary' : isActive ? 'bg-primary/60' : 'bg-muted'
+                              )}
+                              title={`Schritt ${step}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Time estimate */}
+                  <div className="px-4 py-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
                       <span>Geschätzt: 5h</span>
-                    </div>
-                    <div className="mt-2 h-2 bg-primary/10 dark:bg-primary/20 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all"
-                        style={{ width: task.assignment?.accepted_at ? '50%' : '10%' }}
-                      />
                     </div>
                   </div>
                   
@@ -927,7 +960,6 @@ export default function EmployeeTasksView() {
                         </div>
                         {selectedTask.special_compensation && (
                           <div className="flex items-center gap-2">
-                            <Euro className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm font-medium">Sondervergütung:</span>
                             <span className="text-sm">{selectedTask.special_compensation}€</span>
                           </div>
@@ -1100,19 +1132,34 @@ export default function EmployeeTasksView() {
                         <div className="mt-6 p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
                           <h4 className="font-medium mb-2 text-amber-800 dark:text-amber-300">Bewertungsbogen ausfüllen</h4>
                           <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
-                            Bitte gehe zum Tab „Bewertungsbögen", um deine strukturierte Bewertung für diesen Auftrag einzutragen.
+                            {taskEvaluations[selectedTask.id] 
+                              ? 'Bewertung wurde ausgefüllt. Du kannst jetzt zum nächsten Schritt.'
+                              : 'Bitte gehe zum Tab „Bewertungsbögen", um deine strukturierte Bewertung für diesen Auftrag einzutragen.'}
                           </p>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              if (tabContext) {
-                                tabContext.setActiveTab('evaluations');
-                              }
-                            }}
-                            className="gap-2"
-                          >
-                            Zum Bewertungsbogen
-                          </Button>
+                          <div className="flex gap-2 flex-wrap">
+                            {!taskEvaluations[selectedTask.id] && (
+                              <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                  if (tabContext) {
+                                    tabContext.setActiveTab('evaluations');
+                                  }
+                                }}
+                                className="gap-2"
+                              >
+                                Zum Bewertungsbogen
+                              </Button>
+                            )}
+                            {taskEvaluations[selectedTask.id] && (
+                              <Button 
+                                onClick={() => setWorkflowStep(selectedTask, 3)}
+                                className="gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Bewertung ausgefüllt → Weiter
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
 
