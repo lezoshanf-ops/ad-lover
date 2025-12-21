@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskAssignment, TaskStatus, TaskPriority, Profile, SmsCodeRequest } from '@/types/panel';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,12 +16,12 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, ArrowUpRight, HandMetal, Undo2, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2
+  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-// SMS Code Display Component - shows code multiple times with resend option
+// SMS Code Display Component
 function SmsCodeDisplay({ 
   smsCode,
   onResendCode,
@@ -90,15 +91,15 @@ function SmsCodeDisplay({
 }
 
 const priorityConfig: Record<TaskPriority, { color: string; label: string; icon: string }> = {
-  low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30 !font-bold', label: 'Niedrig', icon: '○' },
-  medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 !font-bold', label: 'Mittel', icon: '◐' },
-  high: { color: 'bg-red-100 text-red-800 dark:bg-red-600/30 dark:text-red-300 border border-red-400 dark:border-red-500/50 !font-bold animate-priority-pulse', label: 'Hoch', icon: '●' },
-  urgent: { color: 'bg-red-200 text-red-900 dark:bg-red-700/40 dark:text-red-200 border border-red-500 dark:border-red-600/60 !font-bold animate-priority-pulse', label: 'Dringend', icon: '⬤' }
+  low: { color: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border border-slate-500/30', label: 'Niedrig', icon: '○' },
+  medium: { color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30', label: 'Mittel', icon: '◐' },
+  high: { color: 'bg-red-100 text-red-800 dark:bg-red-600/30 dark:text-red-300 border border-red-400 dark:border-red-500/50', label: 'Hoch', icon: '●' },
+  urgent: { color: 'bg-red-200 text-red-900 dark:bg-red-700/40 dark:text-red-200 border border-red-500 dark:border-red-600/60', label: 'Dringend', icon: '⬤' }
 };
 
 const statusConfig: Record<TaskStatus, { color: string; label: string }> = {
-  pending: { color: 'bg-muted text-muted-foreground', label: 'Offen' },
-  assigned: { color: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400', label: 'Zugewiesen' },
+  pending: { color: 'bg-amber-500/20 text-amber-700 dark:text-amber-400', label: 'Ausstehend' },
+  assigned: { color: 'bg-amber-500/20 text-amber-700 dark:text-amber-400', label: 'Ausstehend' },
   in_progress: { color: 'bg-blue-500/20 text-blue-700 dark:text-blue-400', label: 'In Bearbeitung' },
   sms_requested: { color: 'bg-purple-500/20 text-purple-700 dark:text-purple-400', label: 'SMS angefordert' },
   completed: { color: 'bg-green-500/20 text-green-700 dark:text-green-400', label: 'Abgeschlossen' },
@@ -111,38 +112,45 @@ interface StatusRequest {
   read_at: string | null;
 }
 
+interface TaskWithDetails extends Task {
+  assignment?: TaskAssignment;
+  assignedBy?: Profile;
+  smsRequest?: SmsCodeRequest;
+}
+
 export default function EmployeeTasksView() {
-  const [tasks, setTasks] = useState<(Task & { assignment?: TaskAssignment; assignedBy?: Profile; smsRequest?: SmsCodeRequest })[]>([]);
+  const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, number>>({});
   const [progressNotes, setProgressNotes] = useState<Record<string, string>>({});
   const [statusRequests, setStatusRequests] = useState<StatusRequest[]>([]);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTask, setSelectedTask] = useState<TaskWithDetails | null>(null);
   const [completionDialog, setCompletionDialog] = useState<{
     open: boolean;
-    task: (Task & { assignment?: TaskAssignment }) | null;
+    task: TaskWithDetails | null;
     duration: string;
   }>({ open: false, task: null, duration: '' });
   const [resendingCode, setResendingCode] = useState<string | null>(null);
   const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string }>({ open: false, url: '', taskTitle: '' });
+  const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
   const { toast } = useToast();
   const { user } = useAuth();
   const tabContext = useTabContext();
   const { playNotificationSound } = useNotificationSound();
   const { permission, requestPermission, showNotification } = usePushNotifications();
   
-  // Track if initial load is complete to avoid notifications on page load
   const initialLoadComplete = useRef(false);
   const realtimeSubscribed = useRef(false);
   const pollingIntervalId = useRef<number | null>(null);
   const pollingTimeoutId = useRef<number | null>(null);
-  // Request push notification permission on mount
+
   useEffect(() => {
     if (permission === 'default') {
       requestPermission();
     }
   }, [permission, requestPermission]);
 
-  // Keep screen in sync when returning to the tab/window
   useEffect(() => {
     if (!user) return;
 
@@ -165,7 +173,6 @@ export default function EmployeeTasksView() {
     };
   }, [user]);
 
-  // Check if user is currently checked in
   const checkTimeStatus = async () => {
     if (!user) return;
 
@@ -188,7 +195,6 @@ export default function EmployeeTasksView() {
     }
   };
 
-  // Notify about new task assignment
   const notifyNewTask = useCallback((taskTitle?: string) => {
     playNotificationSound();
     showNotification('🆕 Neuer Auftrag!', {
@@ -201,7 +207,6 @@ export default function EmployeeTasksView() {
     });
   }, [playNotificationSound, showNotification, toast]);
 
-  // Notify about SMS code received
   const notifySmsCode = useCallback(() => {
     playNotificationSound();
     showNotification('📱 SMS-Code erhalten!', {
@@ -220,7 +225,6 @@ export default function EmployeeTasksView() {
       fetchStatusRequests();
       checkTimeStatus();
 
-      // Reset fallback timers
       realtimeSubscribed.current = false;
       if (pollingIntervalId.current) {
         window.clearInterval(pollingIntervalId.current);
@@ -233,30 +237,20 @@ export default function EmployeeTasksView() {
 
       const startPollingFallback = () => {
         if (pollingIntervalId.current) return;
-        console.warn('[Realtime] Fallback polling enabled');
         pollingIntervalId.current = window.setInterval(() => {
           fetchTasks();
           fetchStatusRequests();
         }, 1500);
       };
 
-      // If subscription doesn’t reach SUBSCRIBED quickly (e.g. WS blocked), enable polling.
       pollingTimeoutId.current = window.setTimeout(() => {
         if (!realtimeSubscribed.current) startPollingFallback();
       }, 5000);
 
-      // Subscribe to realtime changes - no filters, RLS handles security
-      // Filters with UPDATE events can be unreliable, so we fetch and let RLS filter
       const channel = supabase
         .channel(`employee-tasks-${user.id}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'task_assignments',
-        }, (payload) => {
-          console.log('[Realtime] task_assignments INSERT', payload);
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_assignments' }, (payload) => {
           const newData = payload.new as Record<string, unknown> | null;
-          // New task assigned to current user
           if (newData?.user_id === user.id && initialLoadComplete.current) {
             supabase
               .from('tasks')
@@ -271,78 +265,40 @@ export default function EmployeeTasksView() {
             fetchTasks();
           }
         })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'task_assignments',
-        }, (payload) => {
-          console.log('[Realtime] task_assignments UPDATE', payload);
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'task_assignments' }, (payload) => {
           const newData = payload.new as Record<string, unknown> | null;
           const oldData = payload.old as Record<string, unknown> | null;
           if (newData?.user_id === user.id || oldData?.user_id === user.id) {
             fetchTasks();
           }
         })
-        .on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'task_assignments',
-        }, (payload) => {
-          console.log('[Realtime] task_assignments DELETE', payload);
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_assignments' }, (payload) => {
           const oldData = payload.old as Record<string, unknown> | null;
           if (oldData?.user_id === user.id) {
             fetchTasks();
           }
         })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'sms_code_requests',
-        }, (payload) => {
-          console.log('[Realtime] sms_code_requests changed', payload);
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sms_code_requests' }, (payload) => {
           const newData = payload.new as Record<string, unknown> | null;
           const oldData = payload.old as Record<string, unknown> | null;
-          // Only process if this affects current user
           if (newData?.user_id === user.id || oldData?.user_id === user.id) {
-            // Show notification when SMS code is received
-            if (
-              payload.eventType === 'UPDATE' &&
-              newData?.sms_code &&
-              !oldData?.sms_code &&
-              initialLoadComplete.current
-            ) {
+            if (payload.eventType === 'UPDATE' && newData?.sms_code && !oldData?.sms_code && initialLoadComplete.current) {
               notifySmsCode();
             }
             fetchTasks();
           }
         })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'tasks',
-        }, (payload) => {
-          console.log('[Realtime] tasks changed', payload);
-          // Always refetch - RLS will filter appropriately
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
           fetchTasks();
         })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-        }, (payload) => {
-          console.log('[Realtime] notifications changed', payload);
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
           const newData = payload.new as Record<string, unknown> | null;
           const oldData = payload.old as Record<string, unknown> | null;
           if (newData?.user_id === user.id || oldData?.user_id === user.id) {
             fetchStatusRequests();
           }
         })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'time_entries',
-        }, (payload) => {
-          console.log('[Realtime] time_entries changed', payload);
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries' }, (payload) => {
           const newData = payload.new as Record<string, unknown> | null;
           const oldData = payload.old as Record<string, unknown> | null;
           if (newData?.user_id === user.id || oldData?.user_id === user.id) {
@@ -350,21 +306,16 @@ export default function EmployeeTasksView() {
           }
         })
         .subscribe((status) => {
-          console.log('[Realtime] Subscription status:', status);
-
           if (status === 'SUBSCRIBED') {
             realtimeSubscribed.current = true;
             if (pollingIntervalId.current) {
               window.clearInterval(pollingIntervalId.current);
               pollingIntervalId.current = null;
             }
-
-            // Mark initial load as complete after a short delay
             setTimeout(() => {
               initialLoadComplete.current = true;
             }, 1000);
           }
-
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             startPollingFallback();
           }
@@ -425,7 +376,6 @@ export default function EmployeeTasksView() {
         supabase.from('documents').select('id, task_id').eq('user_id', user.id).in('task_id', taskIds)
       ]);
 
-      // Count documents per task
       const docCounts: Record<string, number> = {};
       if (docsRes.data) {
         docsRes.data.forEach(doc => {
@@ -440,7 +390,6 @@ export default function EmployeeTasksView() {
         const enrichedTasks = tasksRes.data.map(task => {
           const assignment = assignments.find(a => a.task_id === task.id);
           const assignedBy = profilesRes.data?.find((p: any) => p.user_id === task.created_by);
-          // Get the most recent SMS request for this task that has a code, or fallback to the most recent one
           const taskSmsRequests = smsRes.data?.filter(s => s.task_id === task.id) || [];
           const smsRequest = taskSmsRequests.find(s => s.sms_code) || taskSmsRequests[0];
           return {
@@ -459,7 +408,6 @@ export default function EmployeeTasksView() {
   };
 
   const handleAcceptTask = async (taskId: string) => {
-    // Use secure server-side function that properly updates task status
     const { error } = await supabase.rpc('accept_task', { _task_id: taskId });
     
     if (error) {
@@ -471,7 +419,6 @@ export default function EmployeeTasksView() {
   };
 
   const handleReturnTask = async (taskId: string) => {
-    // Delete the assignment completely so task disappears from employee view
     await supabase.from('task_assignments').delete().eq('task_id', taskId).eq('user_id', user?.id);
     await supabase.from('tasks').update({ status: 'pending' }).eq('id', taskId);
     toast({ title: 'Auftrag abgegeben', description: 'Der Auftrag wurde zurückgegeben.' });
@@ -496,8 +443,6 @@ export default function EmployeeTasksView() {
   const handleResendSmsCode = async (taskId: string, _existingRequestId: string) => {
     setResendingCode(taskId);
 
-    // Employees are allowed to INSERT requests, but not UPDATE them (RLS).
-    // So re-requests create a new pending request record.
     const { error } = await supabase.from('sms_code_requests').insert({
       task_id: taskId,
       user_id: user?.id,
@@ -513,8 +458,7 @@ export default function EmployeeTasksView() {
     setResendingCode(null);
   };
 
-  const handleCompleteTask = async (task: Task & { assignment?: TaskAssignment }) => {
-    // Calculate duration since task was accepted
+  const handleCompleteTask = async (task: TaskWithDetails) => {
     const acceptedAt = task.assignment?.accepted_at || task.assignment?.assigned_at;
     let duration = 'Unbekannt';
     if (acceptedAt) {
@@ -523,7 +467,6 @@ export default function EmployeeTasksView() {
     
     const notes = progressNotes[task.id] || '';
     
-    // Use secure database function to complete task (handles status update + admin notification)
     const { error } = await supabase.rpc('complete_task', {
       _task_id: task.id,
       _progress_notes: notes || null
@@ -534,13 +477,8 @@ export default function EmployeeTasksView() {
       return;
     }
     
-    // Show completion dialog with stats and praise
-    setCompletionDialog({
-      open: true,
-      task,
-      duration
-    });
-    
+    setCompletionDialog({ open: true, task, duration });
+    setSelectedTask(null);
     fetchTasks();
   };
 
@@ -558,22 +496,85 @@ export default function EmployeeTasksView() {
     }
   };
 
-  // Only show active tasks - completed tasks are shown in profile history
   const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+  const filteredTasks = activeTasks.filter(t => 
+    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Task workflow steps based on images
+  const getTaskSteps = (task: TaskWithDetails) => [
+    {
+      number: 1,
+      title: 'Bewertung der Webseite',
+      description: 'Öffne die Internetseite und nimm dir einige Minuten Zeit, um dir ein genaues Bild vom Aufbau der Seite zu machen. Achte dabei besonders auf den ersten Eindruck, die Übersichtlichkeit der Startseite, die Menüführung sowie das allgemeine Design.'
+    },
+    {
+      number: 2,
+      title: 'Bewertung ausfüllen',
+      description: 'Klicke im Auftrag auf „Weiter", um den Bewertungsbogen zu starten. Gib dort deine persönliche Einschätzung zum Design, zur Übersichtlichkeit und zum Gesamteindruck der Webseite ab. Fülle den Bogen vollständig aus und bestätige die Eingabe.'
+    },
+    {
+      number: 3,
+      title: 'Entscheidung zum digitalen Ablauf',
+      description: 'Im nächsten Schritt wirst du gefragt, ob du den digitalen Ablauf testen möchtest. Dabei handelt es sich um einen kurzen Videochat, bei dem du dich mit Demo-Daten ausweist. Der Ablauf ist anonym, rechtlich unverbindlich und dauert nur wenige Minuten.'
+    },
+    {
+      number: 4,
+      title: 'Demo-Daten erhalten',
+      description: 'Nach deiner Zustimmung erscheinen die Demo-Daten nach kurzer Zeit in deinem System. Wenn du sie werktags zwischen 9:00 und 18:00 Uhr beantragst, stehen sie dir in der Regel innerhalb von 30 Minuten zur Verfügung.'
+    },
+    {
+      number: 5,
+      title: 'Videochat durchführen',
+      description: 'Mit den erhaltenen Demo-Daten startest du den digitalen Ablauf auf der Webseite. Der Videochat ist kurz, dauert nur etwa fünf Minuten und kann bequem per Laptop oder Smartphone durchgeführt werden.'
+    },
+    {
+      number: 6,
+      title: 'Unterlagen abwarten',
+      description: 'Nach erfolgreichem Abschluss des Ablaufs erhältst du automatisch postalisch neutrale Unterlagen. Diese Unterlagen sind rein simuliert und haben keine rechtliche Relevanz.'
+    },
+    {
+      number: 7,
+      title: 'Nachweis hochladen',
+      description: 'Fotografiere oder scanne die erhaltenen Unterlagen und lade sie im Auftragssystem hoch. Achte darauf, dass die Dateien gut lesbar sind. Erst nach dem erfolgreichen Upload gilt der Auftrag als vollständig erledigt.'
+    },
+    {
+      number: 8,
+      title: 'Auftrag abschließen',
+      description: 'Sobald die Unterlagen hochgeladen wurden, kannst du den Auftrag als abgeschlossen markieren. Erst dann wird dir die vereinbarte Arbeitszeit gutgeschrieben.'
+    }
+  ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Meine Aufträge</h2>
-          <p className="text-muted-foreground mt-1">
-            {activeTasks.length} aktive Aufträge
+          <h2 className="text-2xl font-bold tracking-tight">Meine Aufträge</h2>
+          <p className="text-muted-foreground">
+            Verwalten Sie Ihre aktuellen Aufträge und sehen Sie Ihren Fortschritt ein.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Suchen..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 w-48"
+            />
+          </div>
+          <Button variant="outline" onClick={() => fetchTasks()} className="gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            Aktualisieren
+          </Button>
         </div>
       </div>
 
-      {activeTasks.length === 0 ? (
-        <Card className="shadow-lg border-dashed">
+      {filteredTasks.length === 0 ? (
+        <Card className="border-dashed">
           <CardContent className="py-16 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
               <AlertCircle className="h-8 w-8 text-muted-foreground" />
@@ -581,274 +582,367 @@ export default function EmployeeTasksView() {
             <h3 className="text-lg font-semibold mb-2">Keine Aufträge</h3>
             <p className="text-muted-foreground">
               {tasks.length > 0 
-                ? (
-                  <>
-                    🎉 Super gemacht! Du hast alle deine Aufträge abgeschlossen.<br />
-                    <span className="text-sm">Bei Fragen oder für neue Aufgaben wende dich gerne an ein Teammitglied.</span>
-                  </>
-                )
+                ? '🎉 Super gemacht! Du hast alle deine Aufträge abgeschlossen.'
                 : 'Dir wurden noch keine Aufträge zugewiesen.'
               }
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6">
-          {activeTasks.map((task) => {
-            const isHighPriority = task.priority === 'high' || task.priority === 'urgent';
+        <div className="grid md:grid-cols-2 gap-4">
+          {filteredTasks.map((task) => {
+            const hasVideoChat = task.assignment?.accepted_at;
+            
             return (
-            <Card key={task.id} className={`glass-card overflow-hidden transition-all hover:shadow-glow ${
-              isHighPriority ? 'neon-border' : ''
-            }`}>
-              <div className={`h-1.5 ${
-                task.priority === 'urgent' ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse' :
-                task.priority === 'high' ? 'bg-gradient-to-r from-red-500 to-red-600' :
-                task.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-amber-500' : 'bg-muted'
-              }`} />
-              <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="space-y-2">
-                    <CardTitle className="text-xl">{task.title}</CardTitle>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="status" className={`${priorityConfig[task.priority].color} border font-medium`}>
-                        {priorityConfig[task.priority].icon} {priorityConfig[task.priority].label}
-                      </Badge>
-                      <Badge variant="status" className={statusConfig[task.status].color}>
-                        {statusConfig[task.status].label}
-                      </Badge>
-                      {task.special_compensation && task.special_compensation > 0 && (
-                        <Badge variant="status" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                          Bonus: {task.special_compensation.toFixed(2)} €
+              <Card key={task.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <CardContent className="p-0">
+                  {/* Card Header */}
+                  <div className="p-4 pb-3">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-primary" />
+                        </div>
+                        <Badge variant="outline" className={statusConfig[task.status].color}>
+                          {statusConfig[task.status].label}
                         </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 rounded-lg text-sm">
-                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Abgabefrist</p>
-                          <span className="font-semibold text-amber-700 dark:text-amber-400">
-                            {format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: de })}
-                          </span>
-                        </div>
                       </div>
-                    )}
-                    {task.assignedBy && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 rounded-lg text-sm">
-                        <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-emerald-700 dark:text-emerald-400">
-                          Zugewiesen von {task.assignedBy.first_name}
-                        </span>
+                      {task.deadline && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {format(new Date(task.deadline), 'dd.MM.yyyy', { locale: de })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="font-semibold text-lg mb-1 line-clamp-2">{task.title}</h3>
+                    
+                    <Badge variant="outline" className={`mt-2 ${priorityConfig[task.priority].color}`}>
+                      {priorityConfig[task.priority].label}
+                    </Badge>
+                  </div>
+                  
+                  {/* Video Chat Status */}
+                  {hasVideoChat && (
+                    <div className="px-4 py-2 bg-green-50 dark:bg-green-900/20 border-y border-green-100 dark:border-green-900/30">
+                      <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Video-Chat akzeptiert
                       </div>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                {task.description && (
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.description}</p>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="truncate">{task.customer_name}</span>
-                </div>
-
-                {(task.test_email || task.test_password) && (
-                  <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-3 uppercase tracking-wide">
-                      Test-Zugangsdaten
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {task.test_email && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span className="font-mono">{task.test_email}</span>
-                        </div>
-                      )}
-                      {task.test_password && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Key className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span className="font-mono">{task.test_password}</span>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                )}
-
-                {task.smsRequest?.sms_code && (
-                  <SmsCodeDisplay 
-                    smsCode={task.smsRequest.sms_code} 
-                    onResendCode={() => handleResendSmsCode(task.id, task.smsRequest!.id)}
-                    isResending={resendingCode === task.id}
-                  />
-                )}
-
-                {task.web_ident_url && (
-                  <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                    <p className="text-xs font-semibold text-cyan-700 dark:text-cyan-400 mb-3 uppercase tracking-wide flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      Web-Ident erforderlich
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 border-cyan-500/50 text-cyan-600 hover:bg-cyan-500/10"
-                        onClick={() => setWebIdentDialog({ open: true, url: task.web_ident_url!, taskTitle: task.title })}
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                        Web-Ident im Panel öffnen
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2 text-cyan-600 hover:bg-cyan-500/10"
-                        asChild
-                      >
-                        <a href={task.web_ident_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          In neuem Tab öffnen
-                        </a>
-                      </Button>
+                  )}
+                  
+                  {/* Progress bar */}
+                  <div className="px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                      <Clock className="h-4 w-4" />
+                      <span>Geschätzt: 5h</span>
                     </div>
-                  </div>
-                )}
-
-                {task.status !== 'completed' && task.status !== 'cancelled' && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
-                      {statusRequests.some(r => r.related_task_id === task.id) && (
-                        <div className="p-4 bg-amber-500/10 rounded-lg border border-amber-500/30 animate-pulse">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3">
-                              <MessageSquare className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                              <div>
-                                <p className="font-medium text-amber-700 dark:text-amber-400">Statusanfrage vom Admin</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Bitte schreibe eine kurze Notiz zum aktuellen Fortschritt dieses Auftrags.
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDismissStatusRequest(task.id)}
-                              className="text-amber-600 hover:bg-amber-500/20 shrink-0"
-                            >
-                              Verstanden
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      <Textarea
-                        placeholder="Fortschritt und Notizen hier eingeben..."
-                        value={progressNotes[task.id] || task.assignment?.progress_notes || ''}
-                        onChange={(e) => setProgressNotes({ ...progressNotes, [task.id]: e.target.value })}
-                        className={`min-h-[100px] resize-none ${statusRequests.some(r => r.related_task_id === task.id) ? 'ring-2 ring-amber-500/50 border-amber-500' : ''}`}
+                    <div className="mt-2 h-2 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-amber-500 rounded-full transition-all"
+                        style={{ width: task.assignment?.accepted_at ? '50%' : '10%' }}
                       />
-                      <div className="flex flex-wrap gap-3">
-                        {task.status === 'assigned' && !task.assignment?.accepted_at ? (
-                          isCheckedIn ? (
-                            <Button 
-                              onClick={() => handleAcceptTask(task.id)} 
-                              size="lg"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
-                            >
-                              Auftrag annehmen
-                            </Button>
-                          ) : (
-                            <div className="flex flex-col gap-2">
-                              <Button 
-                                disabled
-                                size="lg"
-                                className="bg-muted text-muted-foreground cursor-not-allowed"
-                              >
-                                Auftrag annehmen
-                              </Button>
-                              <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                                <Clock className="h-4 w-4" />
-                                Bitte zuerst unter Zeiterfassung einstempeln
-                              </p>
-                            </div>
-                          )
-                        ) : task.assignment?.accepted_at && (
-                          <Button 
-                            disabled
-                            size="lg"
-                            className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 cursor-default opacity-80"
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Angenommen
-                          </Button>
-                        )}
-                        {(task.status === 'in_progress' || task.status === 'sms_requested') && (
-                          <>
-                            {!task.smsRequest && (
-                              <Button 
-                                variant="outline" 
-                                onClick={() => handleRequestSms(task.id)}
-                                className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
-                              >
-                                SMS-Code Anfragen
-                              </Button>
-                            )}
-                            {task.smsRequest && (task.smsRequest.status === 'pending' || task.smsRequest.status === 'resend_requested') && (
-                              <Badge variant="status" className="bg-purple-500/20 text-purple-700 dark:text-purple-400 py-2 px-3">
-                                SMS-Code angefordert - warte auf Antwort...
-                              </Badge>
-                            )}
-                            <Button 
-                              onClick={() => handleGoToDocuments(task.id)} 
-                              variant="neon"
-                              className="gap-2"
-                            >
-                              <FileUp className="h-4 w-4" />
-                              Dokumentation hochladen
-                            </Button>
-                            {taskDocuments[task.id] && taskDocuments[task.id] > 0 ? (
-                              <Button 
-                                onClick={() => handleCompleteTask(task)} 
-                                className="bg-green-600 hover:bg-green-700 gap-2"
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                                Auftrag abgeben
-                              </Button>
-                            ) : (
-                              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>Dokumentation erforderlich zum Abgeben</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                        <Button 
-                          variant="glass" 
-                          onClick={() => handleUpdateNotes(task.id)}
-                        >
-                          Notizen speichern
-                        </Button>
-                      </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )})}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="p-4 pt-2 flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 gap-2"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Details
+                    </Button>
+                    {task.status === 'assigned' && !task.assignment?.accepted_at ? (
+                      isCheckedIn ? (
+                        <Button 
+                          className="flex-1 gap-2"
+                          onClick={() => handleAcceptTask(task.id)}
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                          Starten
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="flex-1 gap-2" 
+                          disabled
+                        >
+                          Einstempeln zum Starten
+                        </Button>
+                      )
+                    ) : task.assignment?.accepted_at && task.status !== 'completed' ? (
+                      <Button 
+                        className="flex-1 gap-2"
+                        onClick={() => setSelectedTask(task)}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Fortsetzen
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Completion Dialog with Stats and Praise */}
+      {/* Task Detail / Flow View */}
+      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedTask && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
+                <DialogDescription className="flex items-center gap-2">
+                  <span className="flex items-center gap-1">
+                    Schritt 4 von 8
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+              
+              {/* Progress indicator */}
+              <div className="flex gap-1 mb-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
+                  <div 
+                    key={step}
+                    className={`flex-1 h-2 rounded-full ${
+                      step <= 4 ? 'bg-primary' : 'bg-muted'
+                    }`}
+                  />
+                ))}
+              </div>
+              
+              {/* Workflow steps */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
+                <div className="space-y-2">
+                  {getTaskSteps(selectedTask).map((step) => (
+                    <div 
+                      key={step.number}
+                      className="flex gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        step.number <= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {step.number}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium mb-1">{step.title}</h4>
+                        <p className="text-sm text-muted-foreground">{step.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Video Chat Status Section */}
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-3">Video-Chat Status</h4>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Video className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Video Beratung</p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="text-muted-foreground">Noch nicht gestartet</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Task credentials if any */}
+              {(selectedTask.test_email || selectedTask.test_password) && (
+                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-3 uppercase tracking-wide">
+                    Test-Zugangsdaten
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {selectedTask.test_email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-mono">{selectedTask.test_email}</span>
+                      </div>
+                    )}
+                    {selectedTask.test_password && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Key className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-mono">{selectedTask.test_password}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* SMS Code display */}
+              {selectedTask.smsRequest?.sms_code && (
+                <SmsCodeDisplay 
+                  smsCode={selectedTask.smsRequest.sms_code} 
+                  onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                  isResending={resendingCode === selectedTask.id}
+                />
+              )}
+              
+              {/* Progress notes */}
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Fortschritt und Notizen hier eingeben..."
+                  value={progressNotes[selectedTask.id] || selectedTask.assignment?.progress_notes || ''}
+                  onChange={(e) => setProgressNotes({ ...progressNotes, [selectedTask.id]: e.target.value })}
+                  className="min-h-[100px]"
+                />
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-3 pt-4 border-t">
+                <Button 
+                  variant="outline"
+                  onClick={() => setSelectedTask(null)}
+                >
+                  ← Zurück
+                </Button>
+                
+                <div className="flex-1" />
+                
+                {selectedTask.status === 'assigned' && !selectedTask.assignment?.accepted_at && isCheckedIn && (
+                  <Button onClick={() => handleAcceptTask(selectedTask.id)}>
+                    Auftrag annehmen
+                  </Button>
+                )}
+                
+                {selectedTask.assignment?.accepted_at && (
+                  <>
+                    {!selectedTask.smsRequest && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleRequestSms(selectedTask.id)}
+                        className="gap-2"
+                      >
+                        SMS-Code Anfragen
+                      </Button>
+                    )}
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => handleGoToDocuments(selectedTask.id)}
+                      className="gap-2"
+                    >
+                      <FileUp className="h-4 w-4" />
+                      Dokumente hochladen
+                    </Button>
+                    
+                    {taskDocuments[selectedTask.id] > 0 ? (
+                      <Button 
+                        onClick={() => handleCompleteTask(selectedTask)}
+                        className="gap-2 bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Abschließen
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+                
+                <Button onClick={() => setVideoChatDialog({ open: true, task: selectedTask })}>
+                  Weiter →
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Chat Confirmation Dialog */}
+      <Dialog open={videoChatDialog.open} onOpenChange={(open) => setVideoChatDialog({ ...videoChatDialog, open })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">
+              Möchtest du den Video-Chat durchführen?
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Der Video-Chat ist ein wichtiger Teil des Bewertungsprozesses. Bitte lies dir die folgenden Hinweise sorgfältig durch.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div>
+              <h4 className="font-semibold mb-3">Hinweise für den Video-Chat</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Damit du den Anmeldeprozess realistisch bewerten kannst, bitten wir dich, dich wie ein echter Neukunde zu verhalten. Deine Angaben dienen ausschließlich der internen Bewertung – sie sind nicht rechtsverbindlich.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-2">Gesetzlich vorgeschriebene Fragen im Chat</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Während des Video-Chats kann dir der/die Mitarbeiter:in Sicherheitsfragen stellen, z. B.:
+              </p>
+              <div className="bg-muted p-4 rounded-lg space-y-2 text-sm italic">
+                <p>„Wirst du gezwungen, einen Account zu eröffnen?"</p>
+                <p>„Steht jemand bei dir, der dich zur Anmeldung drängt?"</p>
+              </div>
+              <p className="text-sm font-medium mt-3">
+                Diese Fragen musst du immer mit „Nein" beantworten.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Falls keine solchen Fragen gestellt werden, vermerke das bitte im Bewertungsbogen.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-2">Wichtige Hinweise zur Durchführung</h4>
+              <p className="text-sm text-muted-foreground">
+                Wähle eine ruhige Umgebung mit guter Beleuchtung, funktionierender Webcam und stabiler Internetverbindung.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Folge den Anweisungen des Video-Chat-Systems bzw. der Mitarbeiterin oder des Mitarbeiters Schritt für Schritt.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Sollte etwas unklar oder technisch problematisch sein, notiere es bitte im Bewertungsbogen.
+              </p>
+            </div>
+            
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <p className="text-sm">
+                  Bei Ablehnung wird die Bewertung als nicht erfolgreich gewertet und fließt nicht in deine Leistungen ein.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1 gap-2"
+              onClick={() => setVideoChatDialog({ open: false, task: null })}
+            >
+              <X className="h-4 w-4" />
+              Ablehnen – Ich möchte nicht teilnehmen
+            </Button>
+            <Button 
+              className="flex-1 gap-2"
+              onClick={() => {
+                setVideoChatDialog({ open: false, task: null });
+                toast({ title: 'Einverstanden', description: 'Du hast den Video-Chat akzeptiert.' });
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Einverstanden – Ich führe den Video-Chat durch
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Completion Dialog */}
       <Dialog open={completionDialog.open} onOpenChange={(open) => {
-        if (!open) {
-          setCompletionDialog({ ...completionDialog, open: false });
-        }
+        if (!open) setCompletionDialog({ ...completionDialog, open: false });
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -892,7 +986,7 @@ export default function EmployeeTasksView() {
               <Button
                 onClick={() => {
                   setCompletionDialog({ ...completionDialog, open: false });
-                  fetchTasks(); // Refresh task list to remove completed task
+                  fetchTasks();
                 }}
                 className="bg-primary"
               >
@@ -903,7 +997,7 @@ export default function EmployeeTasksView() {
         </DialogContent>
       </Dialog>
 
-      {/* Web-Ident Dialog with embedded iframe */}
+      {/* Web-Ident Dialog */}
       <Dialog open={webIdentDialog.open} onOpenChange={(open) => setWebIdentDialog({ ...webIdentDialog, open })}>
         <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2 border-b bg-background/80 backdrop-blur-sm">
@@ -913,11 +1007,7 @@ export default function EmployeeTasksView() {
                 Web-Ident: {webIdentDialog.taskTitle}
               </DialogTitle>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                >
+                <Button variant="outline" size="sm" asChild>
                   <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer" className="gap-2">
                     <ExternalLink className="h-4 w-4" />
                     Extern öffnen
@@ -933,7 +1023,7 @@ export default function EmployeeTasksView() {
               </div>
             </div>
             <DialogDescription className="text-sm">
-              Führe die Web-Ident-Verifizierung hier durch. Falls die Seite nicht korrekt lädt, öffne sie in einem neuen Tab.
+              Führe die Web-Ident-Verifizierung hier durch.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 h-full relative">
