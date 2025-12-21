@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useEffect } from 'react';
+import { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import PanelSidebar from './PanelSidebar';
@@ -29,6 +29,35 @@ interface TabContextValue {
 export const TabContext = createContext<TabContextValue | null>(null);
 export const useTabContext = () => useContext(TabContext);
 
+// Request notification permission
+const requestNotificationPermission = async () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+};
+
+// Show desktop notification
+const showDesktopNotification = (title: string, body: string, onClick?: () => void) => {
+  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    const notification = new Notification(title, {
+      body,
+      icon: '/favicon.png',
+      tag: 'chat-message',
+    });
+    
+    if (onClick) {
+      notification.onclick = () => {
+        window.focus();
+        onClick();
+        notification.close();
+      };
+    }
+    
+    // Auto-close after 5 seconds
+    setTimeout(() => notification.close(), 5000);
+  }
+};
+
 export default function EmployeeDashboard() {
   const [activeTab, setActiveTabState] = useState(() => {
     return sessionStorage.getItem('employeeActiveTab') || 'tasks';
@@ -42,11 +71,22 @@ export default function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const activeTabRef = useRef(activeTab);
+
+  // Keep ref in sync
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   const setActiveTab = (tab: string) => {
     sessionStorage.setItem('employeeActiveTab', tab);
     setActiveTabState(tab);
   };
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   // Save scroll position continuously and restore on mount/visibility change
   useEffect(() => {
@@ -156,8 +196,40 @@ export default function EmployeeDashboard() {
       .on('postgres_changes', {
         event: 'INSERT', 
         schema: 'public', 
+        table: 'chat_messages'
+      }, async (payload: any) => {
+        const newMessage = payload.new;
+        // Only notify if message is for this user and not sent by this user
+        const isForUser = newMessage.recipient_id === user.id || newMessage.is_group_message === true;
+        const isFromOther = newMessage.sender_id !== user.id;
+        
+        if (isForUser && isFromOther) {
+          // Fetch sender profile for notification
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', newMessage.sender_id)
+            .single();
+          
+          const senderName = senderProfile 
+            ? `${senderProfile.first_name} ${senderProfile.last_name}`.trim() 
+            : 'Jemand';
+          
+          // Show desktop notification (only if not in chat tab)
+          if (activeTabRef.current !== 'chat') {
+            showDesktopNotification(
+              `Neue Nachricht von ${senderName}`,
+              newMessage.message?.substring(0, 100) || 'Bild gesendet',
+              () => setActiveTab('chat')
+            );
+          }
+        }
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', 
+        schema: 'public', 
         table: 'notifications'
-      }, (payload) => {
+      }, (payload: any) => {
         if (payload.new.user_id === user.id && payload.new.type === 'status_request') {
           toast({
             title: payload.new.title,
