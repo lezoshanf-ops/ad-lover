@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, ChevronRight, ChevronLeft, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LogOut, ChevronRight, PanelLeftClose, PanelLeft, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
@@ -26,6 +26,8 @@ interface PanelSidebarProps {
   onLogoClick?: () => void;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
+  verificationRequired?: boolean;
+  onVerificationClick?: () => void;
 }
 
 export default function PanelSidebar({
@@ -35,6 +37,8 @@ export default function PanelSidebar({
   onLogoClick,
   collapsed,
   onCollapsedChange,
+  verificationRequired = false,
+  onVerificationClick,
 }: PanelSidebarProps) {
   const { profile, role, signOut } = useAuth();
 
@@ -176,6 +180,46 @@ export default function PanelSidebar({
             </div>
           ))}
         </nav>
+
+        {/* Verification required badge */}
+        {verificationRequired && !collapsed && (
+          <div className="mx-2 mb-4">
+            <button
+              onClick={onVerificationClick}
+              className="w-full p-3 bg-primary/20 border border-primary/30 rounded-xl text-left transition-all hover:bg-primary/30"
+            >
+              <div className="flex items-center gap-2 text-primary mb-1">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="text-sm font-semibold">Verifizierung erforderlich</span>
+              </div>
+              <Button 
+                size="sm" 
+                className="w-full mt-2 gap-2 bg-primary hover:bg-primary/90"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Jetzt verifizieren
+              </Button>
+            </button>
+          </div>
+        )}
+        
+        {verificationRequired && collapsed && (
+          <div className="hidden md:flex justify-center mb-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onVerificationClick}
+                  className="p-2 bg-primary/20 rounded-lg text-primary hover:bg-primary/30 transition-colors"
+                >
+                  <AlertTriangle className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                Verifizierung erforderlich
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
         {/* User info at bottom */}
         <div className="mt-auto border-t border-sidebar-border">

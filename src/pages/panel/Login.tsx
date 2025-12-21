@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 export default function PanelLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
@@ -50,59 +51,173 @@ export default function PanelLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
+    <div className="min-h-screen flex">
+      {/* Left side - Dark panel with branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-sidebar relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-sidebar via-sidebar to-sidebar/80" />
+        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
+          <div className="max-w-md">
+            <h1 className="text-4xl xl:text-5xl font-bold text-sidebar-foreground leading-tight mb-6">
+              Willkommen zurück bei<br />
+              <span className="text-primary">Fritze IT</span>
+            </h1>
+            <p className="text-lg text-sidebar-foreground/70 leading-relaxed mb-8">
+              Melden Sie sich an, um auf Ihr Mitarbeiter-Dashboard zuzugreifen und Ihre Aufgaben zu verwalten.
+            </p>
+            
+            <div className="mt-12 p-6 bg-sidebar-accent/30 rounded-xl border border-sidebar-border">
+              <p className="text-xl font-semibold text-sidebar-foreground mb-2">
+                Einfach. Effizient. Zuverlässig.
+              </p>
+              <p className="text-sidebar-foreground/60">
+                Unser Mitarbeiter-Portal bietet Ihnen alle Tools, die Sie für Ihre tägliche Arbeit benötigen.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Decorative elements */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-sidebar-accent/20 to-transparent" />
+        <div className="absolute top-20 right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-40 right-20 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
       </div>
       
-      <Card className="w-full max-w-md shadow-elevated">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <img src={logo} alt="Fritze IT" className="h-16 dark:brightness-0 dark:invert" />
+      {/* Right side - Login form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-background">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        
+        <div className="w-full max-w-md">
+          {/* Logo and title */}
+          <div className="flex items-center gap-3 mb-8">
+            <img 
+              src={logo} 
+              alt="Fritze IT" 
+              className="h-10 w-auto dark:brightness-0 dark:invert" 
+            />
+            <span className="text-xl font-bold text-foreground">Fritze IT</span>
           </div>
-          <CardTitle className="text-2xl font-bold">Mitarbeiter-Login</CardTitle>
-          <CardDescription>
-            Melden Sie sich mit Ihren Zugangsdaten an
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email field */}
             <div className="space-y-2">
-              <Label htmlFor="email">E-Mail</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                E-Mail-Adresse
+              </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="ihre@email.de"
+                  placeholder="test@test.de"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-12 h-12 text-base border-primary/20 focus:border-primary"
                   autoComplete="email"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Passwörter verwalten</p>
             </div>
+            
+            {/* Password field */}
             <div className="space-y-2">
-              <Label htmlFor="password">Passwort</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Ihr Passwort
+              </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Ihr Passwort"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-12 h-12 text-base border-muted focus:border-primary"
                   autoComplete="current-password"
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            
+            {/* Remember me & Forgot password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="remember" 
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                  Angemeldet bleiben
+                </Label>
+              </div>
+              <button 
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Passwort vergessen?
+              </button>
+            </div>
+            
+            {/* Submit button */}
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base font-semibold gap-2"
+              disabled={isLoading}
+            >
+              <User className="h-5 w-5" />
               {isLoading ? 'Anmelden...' : 'Anmelden'}
             </Button>
+            
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-background px-4 text-muted-foreground">
+                  Noch kein Mitarbeiterzugang?
+                </span>
+              </div>
+            </div>
+            
+            {/* Register button */}
+            <Button 
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base font-medium gap-2"
+              onClick={() => navigate('/panel/register')}
+            >
+              Jetzt registrieren
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            
+            {/* Terms notice */}
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              Durch die Registrierung stimmen Sie unseren Nutzungsbedingungen zu
+            </p>
+            
+            {/* Legal links */}
+            <div className="pt-6 border-t border-border mt-6">
+              <p className="text-xs text-muted-foreground text-center mb-2">Rechtliche Informationen</p>
+              <div className="flex items-center justify-center gap-4 text-xs">
+                <Link to="/impressum" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Impressum
+                </Link>
+                <Link to="/datenschutz" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Datenschutz
+                </Link>
+                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                  AGB
+                </button>
+                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Cookies
+                </button>
+              </div>
+            </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
