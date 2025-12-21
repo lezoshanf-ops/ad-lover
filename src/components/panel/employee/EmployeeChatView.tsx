@@ -357,14 +357,25 @@ export default function EmployeeChatView() {
       )
     : messages;
 
+  // Get chat partner (admin who we're chatting with)
+  const chatPartner = recipientId ? profiles[recipientId] : null;
+  const chatPartnerName = chatPartner 
+    ? `${chatPartner.first_name} ${chatPartner.last_name}`.trim() 
+    : null;
+
   return (
     <div className="h-[calc(100vh-12rem)]">
       <Card className="shadow-lg h-full flex flex-col">
         <CardHeader className="pb-3 border-b space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <MessageCircle className="h-5 w-5 text-primary" />
-              <h2 className="font-semibold text-lg">Nachrichten</h2>
+              <div>
+                <h2 className="font-semibold text-lg">Nachrichten</h2>
+                {chatPartnerName && (
+                  <p className="text-sm text-muted-foreground">Chat mit {chatPartnerName}</p>
+                )}
+              </div>
             </div>
             <Button
               variant="ghost"

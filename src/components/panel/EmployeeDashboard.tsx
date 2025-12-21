@@ -132,22 +132,15 @@ export default function EmployeeDashboard() {
     };
 
     const fetchUnreadMessages = async () => {
-      // Count messages where user is recipient (direct or group) and not read
+      // Count only direct messages where user is recipient and not read
       const { count: directCount } = await supabase
         .from('chat_messages')
         .select('*', { count: 'exact', head: true })
         .eq('recipient_id', user.id)
-        .neq('sender_id', user.id)
+        .eq('is_group_message', false)
         .is('read_at', null);
 
-      const { count: groupCount } = await supabase
-        .from('chat_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_group_message', true)
-        .neq('sender_id', user.id)
-        .is('read_at', null);
-
-      setUnreadMessages((directCount || 0) + (groupCount || 0));
+      setUnreadMessages(directCount || 0);
     };
 
     const fetchPendingEvaluations = async () => {

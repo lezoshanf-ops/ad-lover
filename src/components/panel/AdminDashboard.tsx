@@ -21,6 +21,7 @@ export default function AdminDashboard() {
     return sessionStorage.getItem('adminActiveTab') || 'tasks';
   });
   const [pendingSmsCount, setPendingSmsCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const { toast } = useToast();
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchPendingSmsCount();
+    fetchUnreadMessages();
 
     const smsChannel = supabase
       .channel('admin-sms-notifications')
@@ -104,11 +106,35 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
+    const chatChannel = supabase
+      .channel('admin-chat-notifications')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chat_messages' 
+      }, () => {
+        fetchUnreadMessages();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(smsChannel);
       supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(chatChannel);
     };
   }, [user, toast]);
+
+  const fetchUnreadMessages = async () => {
+    if (!user) return;
+    const { count } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', user.id)
+      .eq('is_group_message', false)
+      .is('read_at', null);
+    
+    setUnreadMessages(count || 0);
+  };
 
   const fetchPendingSmsCount = async () => {
     const { count } = await supabase
@@ -143,7 +169,7 @@ export default function AdminDashboard() {
     {
       title: 'KOMMUNIKATION',
       items: [
-        { id: 'chat', label: 'Chat', icon: MessageCircle },
+        { id: 'chat', label: 'Chat', icon: MessageCircle, badge: unreadMessages > 0 ? unreadMessages : undefined },
         { id: 'activity', label: 'Aktivität', icon: Activity },
       ],
     },
