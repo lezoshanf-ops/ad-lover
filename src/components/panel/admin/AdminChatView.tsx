@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { getStatusColor } from '../StatusSelector';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
@@ -40,6 +40,7 @@ interface ProfileWithStatus extends Profile {
 
 interface ExtendedChatMessage extends ChatMessage {
   image_url?: string | null;
+  updated_at?: string | null;
 }
 
 export default function AdminChatView() {
@@ -315,17 +316,19 @@ export default function AdminChatView() {
     
     const { error } = await supabase
       .from('chat_messages')
-      .update({ message: editText.trim() })
+      .update({ 
+        message: editText.trim(),
+        updated_at: new Date().toISOString()
+      })
       .eq('id', editingMessage.id)
       .eq('sender_id', user?.id);
     
     if (error) {
       toast({ title: 'Fehler', description: 'Nachricht konnte nicht bearbeitet werden.', variant: 'destructive' });
     } else {
-      setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, message: editText.trim() } : m));
+      setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, message: editText.trim(), updated_at: new Date().toISOString() } : m));
       setEditingMessage(null);
       setEditText('');
-      toast({ title: 'Erfolg', description: 'Nachricht bearbeitet.' });
     }
   };
 
@@ -376,6 +379,18 @@ export default function AdminChatView() {
         profiles[msg.sender_id]?.last_name?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : messages;
+
+  // Helper to format date labels
+  const formatDateLabel = (date: Date) => {
+    if (isToday(date)) return 'Heute';
+    if (isYesterday(date)) return 'Gestern';
+    return format(date, 'EEEE, d. MMMM yyyy', { locale: de });
+  };
+
+  // Check if message is edited
+  const isEdited = (msg: ExtendedChatMessage) => {
+    return msg.updated_at && msg.updated_at !== msg.created_at;
+  };
 
   const getUnreadCount = async (employeeId: string): Promise<number> => {
     if (!user) return 0;
@@ -493,7 +508,7 @@ export default function AdminChatView() {
                         <p>{searchQuery ? 'Keine Nachrichten gefunden.' : 'Noch keine Nachrichten.'}</p>
                       </div>
                     ) : (
-                      filteredMessages.map((msg) => {
+                      filteredMessages.map((msg, index) => {
                         const isOwn = msg.sender_id === user?.id;
                         const senderProfile = profiles[msg.sender_id];
                         const senderStatus = getStatus(msg.sender_id);
@@ -501,83 +516,108 @@ export default function AdminChatView() {
                           ? `${senderProfile.first_name} ${senderProfile.last_name}`
                           : 'Unbekannt';
                         
+                        // Date separator logic
+                        const msgDate = new Date(msg.created_at);
+                        const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
+                        const showDateSeparator = !prevMsg || !isSameDay(msgDate, new Date(prevMsg.created_at));
+                        
                         return (
-                          <div
-                            key={msg.id}
-                            className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
-                          >
-                            <div className="relative shrink-0 self-end">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={getProfileAvatar(msg.sender_id) || ''} />
-                                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                  {senderProfile?.first_name?.[0]}{senderProfile?.last_name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span 
-                                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${getStatusColor(senderStatus)}`}
-                              />
-                            </div>
-                            <div className={`max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-                              <div className={`flex items-center gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                                <span className="text-xs font-medium">
-                                  {isOwn ? 'Du' : senderName}
+                          <div key={msg.id}>
+                            {/* Date separator */}
+                            {showDateSeparator && (
+                              <div className="flex items-center justify-center my-4">
+                                <div className="flex-1 h-px bg-border" />
+                                <span className="px-4 text-xs font-medium text-muted-foreground bg-background">
+                                  {formatDateLabel(msgDate)}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(msg.created_at), 'HH:mm', { locale: de })}
-                                </span>
+                                <div className="flex-1 h-px bg-border" />
                               </div>
-                              <div className="group relative">
-                                {editingMessage?.id === msg.id ? (
-                                  <div className="flex gap-2 items-center">
-                                    <Input
-                                      value={editText}
-                                      onChange={(e) => setEditText(e.target.value)}
-                                      className="flex-1"
-                                      autoFocus
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleEditMessage();
-                                        if (e.key === 'Escape') cancelEditing();
-                                      }}
-                                    />
-                                    <Button size="sm" onClick={handleEditMessage}>
-                                      <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={cancelEditing}>
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                            )}
+                            <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                              <div className="relative shrink-0 self-end">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={getProfileAvatar(msg.sender_id) || ''} />
+                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                    {senderProfile?.first_name?.[0]}{senderProfile?.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span 
+                                  className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${getStatusColor(senderStatus)}`}
+                                />
+                              </div>
+                              <div className={`max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                                <div className={`flex items-center gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                                  <span className="text-xs font-medium">
+                                    {isOwn ? 'Du' : senderName}
+                                  </span>
+                                  <div className={`flex items-center gap-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(msg.created_at), 'HH:mm', { locale: de })}
+                                    </span>
+                                    {isEdited(msg) && (
+                                      <span className="text-[10px] text-muted-foreground/70 italic">(bearbeitet)</span>
+                                    )}
                                   </div>
-                                ) : (
-                                  <>
-                                    <div
-                                      className={`p-3 rounded-2xl ${
-                                        isOwn
-                                          ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                          : 'bg-muted rounded-bl-sm'
-                                      }`}
-                                    >
-                                      {/* Quote preview if message starts with > */}
-                                      {msg.message?.startsWith('>') && (
-                                        <div className={`flex items-start gap-1 mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
-                                          <CornerDownRight className="h-3 w-3 mt-0.5 opacity-60 shrink-0" />
-                                          <p className={`text-xs italic opacity-70 line-clamp-2 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
-                                            {msg.message.split('\n\n')[0].substring(2)}
-                                          </p>
-                                        </div>
-                                      )}
-                                      {msg.image_url && (
-                                        <img 
-                                          src={msg.image_url} 
-                                          alt="Bild" 
-                                          className="max-w-full rounded-lg mb-2 max-h-64 object-contain cursor-pointer"
-                                          onClick={() => window.open(msg.image_url!, '_blank')}
-                                        />
-                                      )}
-                                      {msg.message && (
-                                        <p className="text-sm whitespace-pre-wrap break-words">
-                                          {msg.message.startsWith('>') ? msg.message.split('\n\n').slice(1).join('\n\n') : msg.message}
-                                        </p>
-                                      )}
+                                </div>
+                                <div className="group relative">
+                                  {editingMessage?.id === msg.id ? (
+                                    <div className="flex flex-col gap-2 min-w-[280px] bg-background border rounded-xl p-3 shadow-lg">
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                        <Pencil className="h-3 w-3" />
+                                        <span>Nachricht bearbeiten</span>
+                                      </div>
+                                      <Input
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
+                                        className="flex-1"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleEditMessage();
+                                          if (e.key === 'Escape') cancelEditing();
+                                        }}
+                                      />
+                                      <div className="flex gap-2 justify-end">
+                                        <Button size="sm" variant="ghost" onClick={cancelEditing} className="h-8">
+                                          Abbrechen
+                                        </Button>
+                                        <Button size="sm" onClick={handleEditMessage} className="h-8">
+                                          <Check className="h-4 w-4 mr-1" />
+                                          Speichern
+                                        </Button>
+                                      </div>
                                     </div>
+                                  ) : (
+                                    <>
+                                      <div
+                                        className={`p-3 rounded-2xl ${
+                                          isOwn
+                                            ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                            : 'bg-muted rounded-bl-sm'
+                                        }`}
+                                      >
+                                        {/* Quote preview if message starts with > */}
+                                        {msg.message?.startsWith('>') && (
+                                          <div className={`flex items-start gap-1 mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
+                                            <CornerDownRight className="h-3 w-3 mt-0.5 opacity-60 shrink-0" />
+                                            <p className={`text-xs italic opacity-70 line-clamp-2 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
+                                              {msg.message.split('\n\n')[0].substring(2)}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {msg.image_url && (
+                                          <img 
+                                            src={msg.image_url} 
+                                            alt="Bild" 
+                                            className="max-w-full rounded-lg mb-2 max-h-64 object-contain cursor-pointer"
+                                            onClick={() => window.open(msg.image_url!, '_blank')}
+                                          />
+                                        )}
+                                        {msg.message && (
+                                          <p className="text-sm whitespace-pre-wrap break-words">
+                                            {msg.message.startsWith('>') ? msg.message.split('\n\n').slice(1).join('\n\n') : msg.message}
+                                          </p>
+                                        )}
+                                      </div>
                                     {/* Action buttons */}
                                     <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ${
                                       isOwn ? '-left-20' : '-right-20'
@@ -636,9 +676,10 @@ export default function AdminChatView() {
                               )}
                             </div>
                           </div>
-                        );
-                      })
-                    )}
+                        </div>
+                      );
+                    })
+                  )}
                     <div ref={scrollRef} />
                   </div>
                 </ScrollArea>
