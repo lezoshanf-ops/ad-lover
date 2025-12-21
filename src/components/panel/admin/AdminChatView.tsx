@@ -33,6 +33,8 @@ import { TypingIndicator } from '../TypingIndicator';
 import { EmojiPicker } from '../EmojiPicker';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useUserPresence } from '@/hooks/useUserPresence';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { PushNotificationPrompt } from '../PushNotificationPrompt';
 
 type UserStatus = 'online' | 'away' | 'busy' | 'offline';
 
@@ -80,6 +82,7 @@ export default function AdminChatView() {
   });
 
   const { playNotificationSound } = useNotificationSound();
+  const { showNotification } = usePushNotifications();
 
   // Use presence-based status tracking
   const { getUserStatus, getLastSeen } = useUserPresence({
@@ -147,9 +150,21 @@ export default function AdminChatView() {
             setMessages(prev => [...prev, newMsg]);
             scrollToBottom();
             
-            // Play sound for incoming messages (not own messages)
+            // Play sound and show notification for incoming messages (not own messages)
             if (newMsg.sender_id !== user.id) {
               playNotificationSound();
+              
+              // Show push notification if app is in background
+              if (document.hidden) {
+                const senderProfile = profiles[newMsg.sender_id];
+                const senderName = senderProfile 
+                  ? `${senderProfile.first_name} ${senderProfile.last_name}`.trim()
+                  : 'Neue Nachricht';
+                showNotification(senderName, {
+                  body: newMsg.message?.substring(0, 100) || 'Hat ein Bild gesendet',
+                  data: { url: '/panel' }
+                });
+              }
             }
             
             if (newMsg.recipient_id === user.id) {
@@ -583,15 +598,18 @@ export default function AdminChatView() {
                 </h2>
               </div>
               {selectedEmployee && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSearching(!isSearching)}
-                  className={isSearching ? 'bg-muted' : ''}
-                  title="Nachrichten durchsuchen"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <PushNotificationPrompt />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsSearching(!isSearching)}
+                    className={isSearching ? 'bg-muted' : ''}
+                    title="Nachrichten durchsuchen"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </div>
             {isSearching && selectedEmployee && (
