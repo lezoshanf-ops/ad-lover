@@ -52,6 +52,7 @@ export interface Task {
   notes: string | null;
   test_email: string | null;
   test_password: string | null;
+  web_ident_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
