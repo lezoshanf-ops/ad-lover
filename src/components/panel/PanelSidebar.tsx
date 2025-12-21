@@ -54,6 +54,7 @@ export default function PanelSidebar({
     sessionStorage.removeItem('employeeActiveTab');
     sessionStorage.removeItem('employeeScrollPosition');
     await signOut();
+    window.location.href = '/panel/login';
   };
 
   return (

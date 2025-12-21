@@ -66,6 +66,10 @@ export interface TaskAssignment {
   accepted_at: string | null;
   status: string;
   progress_notes: string | null;
+  /** Employee workflow progress (1–8). Stored on backend in task_assignments.workflow_step */
+  workflow_step?: number;
+  /** Whether employee opted into the digital flow (video chat). */
+  workflow_digital?: boolean | null;
   task?: Task;
   profile?: Profile;
 }

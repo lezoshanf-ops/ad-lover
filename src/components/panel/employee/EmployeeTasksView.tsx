@@ -34,16 +34,16 @@ function SmsCodeDisplay({
   const [isRevealed, setIsRevealed] = useState(false);
 
   return (
-    <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
-      <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-2 uppercase tracking-wide">
-        SMS-Code erhalten
+    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+      <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">
+        Demo-Daten (SMS)
       </p>
       {!isRevealed ? (
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => setIsRevealed(true)}
             variant="outline"
-            className="gap-2 border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
           >
             <Eye className="h-4 w-4" />
             Code anzeigen
@@ -52,7 +52,7 @@ function SmsCodeDisplay({
             onClick={onResendCode}
             variant="outline"
             disabled={isResending}
-            className="gap-2 border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+            className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
           >
             <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
             Neuen Code anfordern
@@ -60,7 +60,7 @@ function SmsCodeDisplay({
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-3xl font-mono font-bold text-purple-700 dark:text-purple-400 tracking-widest">
+          <p className="text-3xl font-mono font-bold text-primary tracking-widest">
             {smsCode}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -68,7 +68,7 @@ function SmsCodeDisplay({
               onClick={() => setIsRevealed(false)}
               variant="ghost"
               size="sm"
-              className="gap-2 text-purple-600 hover:bg-purple-500/10"
+              className="gap-2 text-primary hover:bg-primary/10"
             >
               <EyeOff className="h-4 w-4" />
               Ausblenden
@@ -78,7 +78,7 @@ function SmsCodeDisplay({
               variant="ghost"
               size="sm"
               disabled={isResending}
-              className="gap-2 text-purple-600 hover:bg-purple-500/10"
+              className="gap-2 text-primary hover:bg-primary/10"
             >
               <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
               Neuen Code anfordern
@@ -484,8 +484,11 @@ export default function EmployeeTasksView() {
 
   const handleUpdateNotes = async (taskId: string) => {
     const notes = progressNotes[taskId] || '';
-    await supabase.from('task_assignments').update({ progress_notes: notes })
-      .eq('task_id', taskId).eq('user_id', user?.id);
+    await supabase
+      .from('task_assignments')
+      .update({ progress_notes: notes })
+      .eq('task_id', taskId)
+      .eq('user_id', user?.id);
     toast({ title: 'Gespeichert', description: 'Notizen aktualisiert.' });
   };
 
@@ -493,6 +496,137 @@ export default function EmployeeTasksView() {
     if (tabContext) {
       tabContext.setPendingTaskId(taskId);
       tabContext.setActiveTab('documents');
+    }
+  };
+
+  const getWorkflowStep = (task: TaskWithDetails) => {
+    const step = (task.assignment as any)?.workflow_step;
+    return typeof step === 'number' && step >= 1 && step <= 8 ? step : 1;
+  };
+
+  const updateWorkflow = async (
+    taskId: string,
+    updates: { workflow_step?: number; workflow_digital?: boolean | null }
+  ) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('task_assignments')
+      .update(updates)
+      .eq('task_id', taskId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast({
+        title: 'Fehler',
+        description: 'Fortschritt konnte nicht gespeichert werden.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await fetchTasks();
+  };
+
+  const setWorkflowStep = async (
+    task: TaskWithDetails,
+    nextStep: number,
+    extra?: { workflow_digital?: boolean | null }
+  ) => {
+    const current = getWorkflowStep(task);
+
+    // strict chronological progression (allow same step re-save)
+    if (nextStep !== current && nextStep !== current + 1) {
+      toast({
+        title: 'Reihenfolge beachten',
+        description: 'Bitte bearbeite die Schritte strikt der Reihe nach (1 bis 8).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await updateWorkflow(task.id, { workflow_step: nextStep, ...extra });
+  };
+
+  const handlePrimaryStepAction = async (task: TaskWithDetails) => {
+    const step = getWorkflowStep(task);
+
+    if (step === 1) {
+      await setWorkflowStep(task, 2);
+      return;
+    }
+
+    if (step === 2) {
+      await setWorkflowStep(task, 3);
+      return;
+    }
+
+    if (step === 3) {
+      setVideoChatDialog({ open: true, task });
+      return;
+    }
+
+    if (step === 4) {
+      // Request demo data (SMS) if not requested; stay on step 4
+      if (!task.smsRequest) {
+        await handleRequestSms(task.id);
+        // ensure digital flag is set, even if already
+        await updateWorkflow(task.id, { workflow_step: 4, workflow_digital: true });
+        return;
+      }
+
+      // If code already received -> proceed
+      if (task.smsRequest?.sms_code) {
+        await setWorkflowStep(task, 5);
+        return;
+      }
+
+      toast({
+        title: 'Demo-Daten ausstehend',
+        description: 'Der Code erscheint, sobald er weitergeleitet wurde.',
+      });
+      return;
+    }
+
+    if (step === 5) {
+      if (task.web_ident_url) {
+        setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title });
+      }
+      // proceed manually after finishing the video chat
+      await setWorkflowStep(task, 6);
+      return;
+    }
+
+    if (step === 6) {
+      await setWorkflowStep(task, 7);
+      return;
+    }
+
+    if (step === 7) {
+      handleGoToDocuments(task.id);
+      // Only allow step 8 if at least one document exists
+      if ((taskDocuments[task.id] || 0) > 0) {
+        await setWorkflowStep(task, 8);
+      } else {
+        toast({
+          title: 'Nachweis fehlt',
+          description: 'Bitte lade zuerst einen Nachweis in „Dokumente“ hoch.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+
+    if (step === 8) {
+      if ((taskDocuments[task.id] || 0) <= 0) {
+        toast({
+          title: 'Nachweis fehlt',
+          description: 'Bitte lade zuerst einen Nachweis hoch, bevor du abschließt.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      await handleCompleteTask(task);
     }
   };
 
@@ -695,26 +829,77 @@ export default function EmployeeTasksView() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedTask && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
-                <DialogDescription className="flex items-center gap-2">
-                  <span className="flex items-center gap-1">
-                    Schritt 4 von 8
-                  </span>
-                </DialogDescription>
-              </DialogHeader>
-              
-              {/* Progress indicator */}
-              <div className="flex gap-1 mb-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => (
-                  <div 
-                    key={step}
-                    className={`flex-1 h-2 rounded-full ${
-                      step <= 4 ? 'bg-primary' : 'bg-muted'
-                    }`}
-                  />
-                ))}
-              </div>
+              {(() => {
+                const currentStep = getWorkflowStep(selectedTask);
+                const steps = getTaskSteps(selectedTask);
+
+                return (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
+                      <DialogDescription className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          Schritt {currentStep} von 8
+                        </span>
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Progress indicator */}
+                    <div className="flex gap-1 mb-6">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
+                        const isDone = step < currentStep;
+                        const isActive = step === currentStep;
+                        return (
+                          <div
+                            key={step}
+                            className={cn(
+                              'flex-1 h-2 rounded-full transition-colors',
+                              isDone ? 'bg-primary' : isActive ? 'bg-primary/60' : 'bg-muted'
+                            )}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Workflow steps */}
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
+                      <div className="space-y-2">
+                        {steps.map((step) => {
+                          const isDone = step.number < currentStep;
+                          const isActive = step.number === currentStep;
+
+                          return (
+                            <div
+                              key={step.number}
+                              className={cn(
+                                'flex gap-4 p-4 rounded-lg border transition-colors',
+                                isActive
+                                  ? 'bg-primary/5 border-primary/20'
+                                  : 'bg-muted/50 border-border/50'
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold',
+                                  isDone
+                                    ? 'bg-primary text-primary-foreground'
+                                    : isActive
+                                      ? 'bg-primary/15 text-primary'
+                                      : 'bg-muted-foreground/15 text-muted-foreground'
+                                )}
+                              >
+                                {step.number}
+                              </div>
+                              <div className="flex-1">
+                                <h4 className={cn('font-medium mb-1', isActive && 'text-primary')}>{step.title}</h4>
+                                <p className="text-sm text-muted-foreground">{step.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
               
               {/* Workflow steps */}
               <div className="space-y-4">
@@ -798,64 +983,70 @@ export default function EmployeeTasksView() {
                 />
               </div>
               
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t">
-                <Button 
-                  variant="outline"
-                  onClick={() => setSelectedTask(null)}
-                >
-                  ← Zurück
-                </Button>
-                
-                <div className="flex-1" />
-                
-                {selectedTask.status === 'assigned' && !selectedTask.assignment?.accepted_at && isCheckedIn && (
-                  <Button onClick={() => handleAcceptTask(selectedTask.id)}>
-                    Auftrag annehmen
-                  </Button>
-                )}
-                
-                {selectedTask.assignment?.accepted_at && (
-                  <>
-                    {!selectedTask.smsRequest && (
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleRequestSms(selectedTask.id)}
-                        className="gap-2"
-                      >
-                        SMS-Code Anfragen
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleGoToDocuments(selectedTask.id)}
-                      className="gap-2"
-                    >
-                      <FileUp className="h-4 w-4" />
-                      Dokumente hochladen
-                    </Button>
-                    
-                    {taskDocuments[selectedTask.id] > 0 ? (
-                      <Button 
-                        onClick={() => handleCompleteTask(selectedTask)}
-                        className="gap-2 bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Abschließen
-                      </Button>
-                    ) : null}
-                  </>
-                )}
-                
-                <Button onClick={() => setVideoChatDialog({ open: true, task: selectedTask })}>
-                  Weiter →
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+               {/* Action buttons */}
+               <div className="flex flex-wrap gap-3 pt-4 border-t">
+                 <Button variant="outline" onClick={() => setSelectedTask(null)}>
+                   ← Zurück
+                 </Button>
+
+                 <div className="flex-1" />
+
+                 {selectedTask.status === 'assigned' && !selectedTask.assignment?.accepted_at && isCheckedIn && (
+                   <Button
+                     onClick={async () => {
+                       await handleAcceptTask(selectedTask.id);
+                       // ensure we start at step 1
+                       await updateWorkflow(selectedTask.id, { workflow_step: 1, workflow_digital: null });
+                     }}
+                   >
+                     Auftrag annehmen
+                   </Button>
+                 )}
+
+                 {selectedTask.assignment?.accepted_at && (
+                   <>
+                     <Button
+                       variant="outline"
+                       onClick={() => handleGoToDocuments(selectedTask.id)}
+                       className="gap-2"
+                     >
+                       <FileUp className="h-4 w-4" />
+                       Dokumente
+                     </Button>
+
+                     <Button
+                       className="gap-2"
+                       onClick={() => handlePrimaryStepAction(selectedTask)}
+                     >
+                       {(() => {
+                         const step = getWorkflowStep(selectedTask);
+                         if (step === 3) return 'Weiter (Entscheidung)';
+                         if (step === 4) return selectedTask.smsRequest?.sms_code ? 'Weiter' : 'Demo-Daten anfordern / prüfen';
+                         if (step === 5) return 'Videochat erledigt → weiter';
+                         if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
+                         if (step === 8) return 'Auftrag abschließen';
+                         return 'Weiter';
+                       })()}
+                       <ArrowRight className="h-4 w-4" />
+                     </Button>
+
+                     {/* Safety: keep explicit completion button only on step 8 */}
+                     {getWorkflowStep(selectedTask) === 8 && (taskDocuments[selectedTask.id] || 0) > 0 ? (
+                       <Button
+                         onClick={() => handleCompleteTask(selectedTask)}
+                         className="gap-2"
+                       >
+                         <CheckCircle2 className="h-4 w-4" />
+                         Abschließen
+                       </Button>
+                     ) : null}
+                   </>
+                 )}
+               </div>
+             </>
+           )}
+         </DialogContent>
+       </Dialog>
 
       {/* Video Chat Confirmation Dialog */}
       <Dialog open={videoChatDialog.open} onOpenChange={(open) => setVideoChatDialog({ ...videoChatDialog, open })}>
@@ -917,26 +1108,35 @@ export default function EmployeeTasksView() {
             </div>
           </div>
           
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              className="flex-1 gap-2"
-              onClick={() => setVideoChatDialog({ open: false, task: null })}
-            >
-              <X className="h-4 w-4" />
-              Ablehnen – Ich möchte nicht teilnehmen
-            </Button>
-            <Button 
-              className="flex-1 gap-2"
-              onClick={() => {
-                setVideoChatDialog({ open: false, task: null });
-                toast({ title: 'Einverstanden', description: 'Du hast den Video-Chat akzeptiert.' });
-              }}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Einverstanden – Ich führe den Video-Chat durch
-            </Button>
-          </div>
+           <div className="flex gap-3">
+             <Button
+               variant="outline"
+               className="flex-1 gap-2"
+               onClick={async () => {
+                 const task = videoChatDialog.task;
+                 setVideoChatDialog({ open: false, task: null });
+                 if (!task) return;
+                 await updateWorkflow(task.id, { workflow_step: 6, workflow_digital: false });
+                 toast({ title: 'Okay', description: 'Du hast den digitalen Ablauf abgelehnt. Weiter mit Schritt 6.' });
+               }}
+             >
+               <X className="h-4 w-4" />
+               Ablehnen
+             </Button>
+             <Button
+               className="flex-1 gap-2"
+               onClick={async () => {
+                 const task = videoChatDialog.task;
+                 setVideoChatDialog({ open: false, task: null });
+                 if (!task) return;
+                 await updateWorkflow(task.id, { workflow_step: 4, workflow_digital: true });
+                 toast({ title: 'Einverstanden', description: 'Weiter mit Schritt 4: Demo-Daten anfordern.' });
+               }}
+             >
+               <CheckCircle2 className="h-4 w-4" />
+               Einverstanden
+             </Button>
+           </div>
         </DialogContent>
       </Dialog>
 
