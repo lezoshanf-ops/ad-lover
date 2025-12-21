@@ -180,12 +180,7 @@ export default function EmployeeDashboard() {
         >
           <PanelHeader
             onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            headerActions={
-              <>
-                <NotificationBell onClick={() => setActiveTab('notifications')} />
-                <NotificationSettings />
-              </>
-            }
+            headerActions={<NotificationBell onClick={() => setActiveTab('notifications')} />}
           />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8 animate-fade-in">
