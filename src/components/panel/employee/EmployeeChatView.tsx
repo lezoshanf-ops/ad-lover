@@ -357,10 +357,16 @@ export default function EmployeeChatView() {
       )
     : messages;
 
-  // Get chat partner (admin who we're chatting with)
-  const chatPartner = recipientId ? profiles[recipientId] : null;
+  // Get chat partner (admin who we're chatting with) - find from messages
+  const chatPartnerId = messages.length > 0 
+    ? [...messages].reverse().find(m => m.sender_id !== user?.id)?.sender_id 
+    : null;
+  const chatPartner = chatPartnerId ? profiles[chatPartnerId] : null;
   const chatPartnerName = chatPartner 
     ? `${chatPartner.first_name} ${chatPartner.last_name}`.trim() 
+    : null;
+  const chatPartnerInitials = chatPartner 
+    ? `${chatPartner.first_name?.[0] || ''}${chatPartner.last_name?.[0] || ''}`.toUpperCase()
     : null;
 
   return (
@@ -369,11 +375,31 @@ export default function EmployeeChatView() {
         <CardHeader className="pb-3 border-b space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <MessageCircle className="h-5 w-5 text-primary" />
+              {chatPartner ? (
+                <div className="relative">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={getProfileAvatar(chatPartnerId!) || ''} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {chatPartnerInitials || 'AD'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span 
+                    className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${getStatusColor(getStatus(chatPartnerId!))}`}
+                  />
+                </div>
+              ) : (
+                <MessageCircle className="h-5 w-5 text-primary" />
+              )}
               <div>
-                <h2 className="font-semibold text-lg">Nachrichten</h2>
-                {chatPartnerName && (
-                  <p className="text-sm text-muted-foreground">Chat mit {chatPartnerName}</p>
+                <h2 className="font-semibold text-lg">
+                  {chatPartnerName || 'Nachrichten'}
+                </h2>
+                {chatPartner && (
+                  <p className="text-xs text-muted-foreground">
+                    {getStatus(chatPartnerId!) === 'online' ? 'Online' : 
+                     getStatus(chatPartnerId!) === 'away' ? 'Abwesend' :
+                     getStatus(chatPartnerId!) === 'busy' ? 'Beschäftigt' : 'Offline'}
+                  </p>
                 )}
               </div>
             </div>
