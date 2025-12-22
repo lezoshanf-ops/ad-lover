@@ -62,7 +62,7 @@ export const JobCard = ({
             </span>
           )}
           {salary && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary bg-secondary/10 px-3 py-1.5 rounded-full">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
               <Euro className="w-3.5 h-3.5" />
               {salary}
             </span>
