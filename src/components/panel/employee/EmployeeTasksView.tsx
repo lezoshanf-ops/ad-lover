@@ -19,7 +19,7 @@ import WorkflowStepCard from './WorkflowStepCard';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video, Phone, Sparkles, Loader2, Info
+  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video, Phone, Sparkles, Loader2, Info, Copy, Check
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -35,6 +35,17 @@ function SmsCodeDisplay({
   isResending: boolean;
 }) {
   const [isRevealed, setIsRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(smsCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   return (
     <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
@@ -63,9 +74,29 @@ function SmsCodeDisplay({
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-3xl font-mono font-bold text-primary tracking-widest">
-            {smsCode}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-3xl font-mono font-bold text-primary tracking-widest">
+              {smsCode}
+            </p>
+            <Button
+              onClick={handleCopy}
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-primary hover:bg-primary/10"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Kopiert
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Kopieren
+                </>
+              )}
+            </Button>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => setIsRevealed(false)}
@@ -140,6 +171,7 @@ export default function EmployeeTasksView() {
   }>({ open: false, task: null, duration: '' });
   const [resendingCode, setResendingCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string; taskId: string }>({ open: false, url: '', taskTitle: '', taskId: '' });
   const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
 const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
@@ -161,6 +193,17 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const previousSmsCodesRef = useRef<Record<string, string | null>>({});
   const workflowContentRef = useRef<HTMLDivElement | null>(null);
 
+  const handleCopySmsCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      toast({ title: 'Kopiert!', description: 'SMS-Code in die Zwischenablage kopiert.' });
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast({ title: 'Fehler', description: 'Kopieren fehlgeschlagen.', variant: 'destructive' });
+    }
+  };
   useEffect(() => {
     if (permission === 'default') {
       requestPermission();
@@ -1046,15 +1089,25 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                   
                   {/* SMS Code Display on Card */}
                   {task.smsRequest?.sms_code && (
-                    <div className="px-4 py-2 bg-primary/5 border-y border-primary/10">
+                    <div 
+                      className="px-4 py-2 bg-primary/5 border-y border-primary/10 cursor-pointer hover:bg-primary/10 transition-colors group"
+                      onClick={() => handleCopySmsCode(task.smsRequest!.sms_code!)}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-primary">
                           <MessageSquare className="h-4 w-4" />
                           <span className="text-xs font-medium uppercase tracking-wide">SMS-Code</span>
                         </div>
-                        <span className="font-mono font-bold text-primary tracking-widest">
-                          {task.smsRequest.sms_code}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-primary tracking-widest">
+                            {task.smsRequest.sms_code}
+                          </span>
+                          {copiedCode === task.smsRequest.sms_code ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4 text-primary/50 group-hover:text-primary transition-colors" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1616,16 +1669,36 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                       </p>
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-                                    disabled={resendingCode === selectedTask.id}
-                                    onClick={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
-                                  >
-                                    <RefreshCw className={cn("h-3 w-3", resendingCode === selectedTask.id && "animate-spin")} />
-                                    Neuer Code
-                                  </Button>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                      onClick={() => handleCopySmsCode(selectedTask.smsRequest!.sms_code!)}
+                                    >
+                                      {copiedCode === selectedTask.smsRequest.sms_code ? (
+                                        <>
+                                          <Check className="h-3 w-3" />
+                                          Kopiert
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          Kopieren
+                                        </>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                      disabled={resendingCode === selectedTask.id}
+                                      onClick={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                                    >
+                                      <RefreshCw className={cn("h-3 w-3", resendingCode === selectedTask.id && "animate-spin")} />
+                                      Neuer Code
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             ) : selectedTask.smsRequest ? (
