@@ -835,9 +835,38 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     return (taskDocuments[taskId] || 0) >= 2;
   };
 
+  // Helper to validate step notes before proceeding
+  const validateStepNotes = (taskId: string, stepNumber: number): boolean => {
+    const currentStepNotes = stepNotes[taskId] || {};
+    const noteForStep = currentStepNotes[stepNumber.toString()] || '';
+    
+    // Also check saved notes from task assignment
+    const task = tasks.find(t => t.id === taskId);
+    const savedNotes = (task?.assignment as any)?.step_notes as Record<string, string> | undefined;
+    const savedNote = savedNotes?.[stepNumber.toString()] || '';
+    
+    // Use whichever note exists (local or saved)
+    const noteToCheck = noteForStep || savedNote;
+    
+    const wordCount = noteToCheck.trim().split(/\s+/).filter(word => word.length > 0).length;
+    return wordCount >= 3;
+  };
+
   const handlePrimaryStepAction = async (task: TaskWithDetails) => {
     const step = getWorkflowStep(task);
     const skipKycSms = (task as any).skip_kyc_sms === true;
+
+    // Validate step notes before proceeding (except for step 1 as it's the first step)
+    if (step > 1 && step < 9) {
+      if (!validateStepNotes(task.id, step)) {
+        toast({
+          title: 'Notiz erforderlich',
+          description: 'Bitte schreibe und speichere mindestens 3 Wörter in deine Schritt-Notiz, bevor du fortfährst.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
 
     if (step === 1) {
       await setWorkflowStep(task, 2);
@@ -1571,36 +1600,110 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
                       
-                      {/* Step 4 Info - KYC Upload */}
+                      {/* Step 4 Info - KYC Upload with Examples */}
                       {currentStep === 4 && (
-                        <div className="p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
-                          <div className="flex items-start gap-3">
-                            <UserCheck className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="font-medium mb-1 text-amber-800 dark:text-amber-300">KYC-Prüfung: Ausweis hochladen</p>
-                              <p className="text-sm text-amber-700 dark:text-amber-400 mb-2">
-                                Lade ein Foto der Vorder- und Rückseite deines Ausweises unter "Dokumente" hoch. Die Dokumente werden vom Admin geprüft.
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-yellow-500/5">
+                          {/* Header */}
+                          <div className="relative h-32 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 flex items-center justify-center overflow-hidden">
+                            <div className="absolute inset-0">
+                              <div className="absolute top-4 left-4 w-16 h-16 rounded-full bg-white/10 blur-xl animate-pulse" />
+                              <div className="absolute bottom-4 right-4 w-24 h-24 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+                            </div>
+                            <div className="relative z-10 flex flex-col items-center gap-2">
+                              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
+                                <UserCheck className="h-7 w-7 text-white" />
+                              </div>
+                              <h3 className="text-lg font-bold text-white">KYC-Prüfung</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="p-5 space-y-4">
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Lade ein Foto der Vorder- und Rückseite deines Ausweises hoch. Die Dokumente werden vom Admin geprüft.
                               </p>
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className={`px-2 py-1 rounded-full ${hasKycDocuments(selectedTask.id) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                  {taskDocuments[selectedTask.id] || 0} / 2 Dokumente hochgeladen
-                                </span>
+                            </div>
+                            
+                            {/* Example Images */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 rounded-xl border bg-muted/30 text-center">
+                                <div className="w-full h-24 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mb-2 border-2 border-dashed border-slate-400 dark:border-slate-600">
+                                  <div className="text-center">
+                                    <FileText className="h-8 w-8 text-slate-500 mx-auto mb-1" />
+                                    <span className="text-xs text-slate-500">Vorderseite</span>
+                                  </div>
+                                </div>
+                                <p className="text-xs font-medium text-muted-foreground">Personalausweis / Reisepass</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Foto, Name, Geburtsdatum sichtbar</p>
+                              </div>
+                              <div className="p-3 rounded-xl border bg-muted/30 text-center">
+                                <div className="w-full h-24 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mb-2 border-2 border-dashed border-slate-400 dark:border-slate-600">
+                                  <div className="text-center">
+                                    <FileText className="h-8 w-8 text-slate-500 mx-auto mb-1" />
+                                    <span className="text-xs text-slate-500">Rückseite</span>
+                                  </div>
+                                </div>
+                                <p className="text-xs font-medium text-muted-foreground">Rückseite des Ausweises</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Alle Daten lesbar</p>
                               </div>
                             </div>
+                            
+                            {/* Upload Status */}
+                            <div className="flex items-center justify-center gap-2">
+                              <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${hasKycDocuments(selectedTask.id) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                {taskDocuments[selectedTask.id] || 0} / 2 Dokumente hochgeladen
+                              </span>
+                            </div>
+                            
+                            {/* Upload Button */}
+                            <Button
+                              className="w-full gap-2 h-12"
+                              variant={hasKycDocuments(selectedTask.id) ? 'outline' : 'default'}
+                              onClick={() => handleGoToDocuments(selectedTask.id)}
+                            >
+                              <FileUp className="h-5 w-5" />
+                              {hasKycDocuments(selectedTask.id) ? 'Weitere Dokumente hochladen' : 'Ausweisdokumente hochladen'}
+                            </Button>
+                            
+                            {hasKycDocuments(selectedTask.id) && (
+                              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/30 flex items-center gap-2">
+                                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                                <p className="text-sm text-green-700 dark:text-green-400">
+                                  Dokumente hochgeladen. Du kannst jetzt fortfahren.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
 
-                      {/* Step 5 Info - Demo-Daten */}
+                      {/* Step 5 Info - Demo-Daten with SMS hint */}
                       {currentStep === 5 && (
-                        <div className="p-4 rounded-lg border bg-muted/30">
-                          <div className="flex items-start gap-3">
-                            <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                            <div>
-                              <p className="font-medium mb-1">Demo-Daten erhalten</p>
-                              <p className="text-sm text-muted-foreground">
-                                Fahre mit dem nächsten Schritt fort, um den Videochat zu starten und dort deinen SMS-Code anzufordern.
-                              </p>
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-violet-500/5 via-purple-500/5 to-indigo-500/5">
+                          <div className="p-5 space-y-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+                                <Info className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-lg mb-1">Demo-Daten erhalten</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Fahre mit dem nächsten Schritt fort, um den Videochat zu starten.
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* SMS Info Box */}
+                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                              <div className="flex items-start gap-3">
+                                <MessageSquare className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">Hinweis zum SMS-Code</p>
+                                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                                    Während des Videochats wirst du nach einem SMS-Code gefragt. Du kannst diesen Code <strong>erst dann anfordern</strong>, wenn du im Videochat bist und der Code benötigt wird.
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
