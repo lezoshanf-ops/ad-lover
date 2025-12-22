@@ -144,6 +144,8 @@ export default function EmployeeTasksView() {
   const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
 const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const [videoChatConfirmed, setVideoChatConfirmed] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(30);
+  const [showSmsReceivedAnimation, setShowSmsReceivedAnimation] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const tabContext = useTabContext();
@@ -155,6 +157,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const pollingIntervalId = useRef<number | null>(null);
   const pollingTimeoutId = useRef<number | null>(null);
   const smsPollingIntervalId = useRef<number | null>(null);
+  const smsCountdownIntervalId = useRef<number | null>(null);
+  const previousSmsCodesRef = useRef<Record<string, string | null>>({});
 
   useEffect(() => {
     if (permission === 'default') {
@@ -356,14 +360,25 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
 
     if (taskWaitingForSms) {
       // Start 30-second polling
+      setSmsCountdown(30);
       smsPollingIntervalId.current = window.setInterval(() => {
         fetchTasks();
+        setSmsCountdown(30); // Reset countdown after fetch
       }, 30000);
+      
+      // Countdown timer
+      smsCountdownIntervalId.current = window.setInterval(() => {
+        setSmsCountdown(prev => (prev > 0 ? prev - 1 : 30));
+      }, 1000);
     } else {
       // Clear polling when not needed
       if (smsPollingIntervalId.current) {
         window.clearInterval(smsPollingIntervalId.current);
         smsPollingIntervalId.current = null;
+      }
+      if (smsCountdownIntervalId.current) {
+        window.clearInterval(smsCountdownIntervalId.current);
+        smsCountdownIntervalId.current = null;
       }
     }
 
@@ -372,8 +387,34 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
         window.clearInterval(smsPollingIntervalId.current);
         smsPollingIntervalId.current = null;
       }
+      if (smsCountdownIntervalId.current) {
+        window.clearInterval(smsCountdownIntervalId.current);
+        smsCountdownIntervalId.current = null;
+      }
     };
   }, [tasks]);
+
+  // Detect when SMS code is received and show visual confirmation
+  useEffect(() => {
+    tasks.forEach(task => {
+      const previousCode = previousSmsCodesRef.current[task.id];
+      const currentCode = task.smsRequest?.sms_code;
+      
+      // If code just appeared (was null/undefined, now has value)
+      if (!previousCode && currentCode && initialLoadComplete.current) {
+        setShowSmsReceivedAnimation(task.id);
+        playNotificationSound();
+        
+        // Clear animation after 3 seconds
+        setTimeout(() => {
+          setShowSmsReceivedAnimation(null);
+        }, 3000);
+      }
+      
+      // Update ref
+      previousSmsCodesRef.current[task.id] = currentCode || null;
+    });
+  }, [tasks, playNotificationSound]);
 
   const fetchStatusRequests = async () => {
     if (!user) return;
@@ -1361,7 +1402,19 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                       
                       {/* SMS Code display / Waiting indicator for Step 4 */}
                       {currentStep === 4 && (
-                        <div className="p-4 rounded-lg border bg-gradient-to-r from-primary/5 to-transparent">
+                        <div className="p-4 rounded-lg border bg-gradient-to-r from-primary/5 to-transparent relative overflow-hidden">
+                          {/* SMS Received Animation Overlay */}
+                          {showSmsReceivedAnimation === selectedTask.id && (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-r from-emerald-500/20 to-green-500/20 animate-fade-in">
+                              <div className="flex flex-col items-center gap-3 animate-scale-in">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/30">
+                                  <CheckCircle2 className="h-10 w-10 text-white" />
+                                </div>
+                                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">SMS-Code erhalten!</p>
+                              </div>
+                            </div>
+                          )}
+                          
                           {selectedTask.smsRequest?.sms_code ? (
                             <SmsCodeDisplay
                               smsCode={selectedTask.smsRequest.sms_code}
@@ -1383,6 +1436,23 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
                                 Werktags 9-18 Uhr: ca. 30 Minuten
+                              </div>
+                              
+                              {/* Countdown Timer */}
+                              <div className="mt-4 p-3 bg-muted/50 rounded-lg border">
+                                <div className="flex items-center justify-center gap-2">
+                                  <RefreshCcw className="h-4 w-4 text-primary" />
+                                  <span className="text-sm font-medium">
+                                    Nächste Aktualisierung in{' '}
+                                    <span className="font-mono text-primary font-bold">{smsCountdown}s</span>
+                                  </span>
+                                </div>
+                                <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-1000 ease-linear"
+                                    style={{ width: `${(smsCountdown / 30) * 100}%` }}
+                                  />
+                                </div>
                               </div>
                             </div>
                           ) : (
