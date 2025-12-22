@@ -85,6 +85,10 @@ export type Database = {
           file_size: number | null
           file_type: string
           id: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
           task_id: string | null
           uploaded_at: string
           user_id: string
@@ -96,6 +100,10 @@ export type Database = {
           file_size?: number | null
           file_type: string
           id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
           task_id?: string | null
           uploaded_at?: string
           user_id: string
@@ -107,6 +115,10 @@ export type Database = {
           file_size?: number | null
           file_type?: string
           id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
           task_id?: string | null
           uploaded_at?: string
           user_id?: string

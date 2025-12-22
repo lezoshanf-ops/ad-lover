@@ -118,10 +118,28 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
+    // KYC document notifications
+    const documentsChannel = supabase
+      .channel('admin-kyc-notifications')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'documents' 
+      }, (payload) => {
+        if (payload.new?.document_type && ['id_card', 'passport', 'certificate', 'contract'].includes(payload.new.document_type)) {
+          toast({
+            title: 'Neues KYC-Dokument',
+            description: 'Ein Mitarbeiter hat ein neues Dokument zur Prüfung eingereicht.',
+          });
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(smsChannel);
       supabase.removeChannel(notificationsChannel);
       supabase.removeChannel(chatChannel);
+      supabase.removeChannel(documentsChannel);
     };
   }, [user, toast]);
 

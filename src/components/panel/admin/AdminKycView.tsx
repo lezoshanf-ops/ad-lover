@@ -26,6 +26,10 @@ interface KycDocument {
   file_size: number | null;
   document_type: string | null;
   uploaded_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  review_notes: string | null;
   profile?: {
     first_name: string;
     last_name: string;
@@ -97,11 +101,12 @@ export default function AdminKycView() {
 
       const enrichedDocs = docs.map(doc => ({
         ...doc,
+        status: (doc.status || 'pending') as 'pending' | 'approved' | 'rejected',
         profile: profiles?.find(p => p.user_id === doc.user_id),
         task: tasks?.find(t => t.id === doc.task_id),
       }));
 
-      setDocuments(enrichedDocs);
+      setDocuments(enrichedDocs as KycDocument[]);
     }
     
     setLoading(false);
@@ -144,23 +149,35 @@ export default function AdminKycView() {
   };
 
   const handleApprove = async (doc: KycDocument) => {
+    // Update document status in database
+    const { error: updateError } = await supabase
+      .from('documents')
+      .update({ 
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+        review_notes: reviewNotes || null
+      })
+      .eq('id', doc.id);
+
+    if (updateError) {
+      toast({ title: 'Fehler', description: 'Genehmigung fehlgeschlagen.', variant: 'destructive' });
+      return;
+    }
+
     // Create notification for the user
-    const { error } = await supabase.from('notifications').insert({
+    await supabase.from('notifications').insert({
       user_id: doc.user_id,
       title: 'Dokument genehmigt',
       message: `Dein Dokument "${doc.file_name}" wurde genehmigt.${reviewNotes ? ` Anmerkung: ${reviewNotes}` : ''}`,
       type: 'document_approved',
     });
 
-    if (error) {
-      toast({ title: 'Fehler', description: 'Genehmigung fehlgeschlagen.', variant: 'destructive' });
-      return;
-    }
-
     toast({ title: 'Erfolg', description: 'Dokument wurde genehmigt und Mitarbeiter benachrichtigt.' });
     setSelectedDocument(null);
     setReviewNotes('');
     setPreviewUrl(null);
+    fetchDocuments();
   };
 
   const handleReject = async (doc: KycDocument) => {
@@ -169,22 +186,29 @@ export default function AdminKycView() {
       return;
     }
 
+    // Update document status in database
+    const { error: updateError } = await supabase
+      .from('documents')
+      .update({ 
+        status: 'rejected',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+        review_notes: reviewNotes
+      })
+      .eq('id', doc.id);
+
+    if (updateError) {
+      toast({ title: 'Fehler', description: 'Ablehnung fehlgeschlagen.', variant: 'destructive' });
+      return;
+    }
+
     // Create notification for the user
-    const { error } = await supabase.from('notifications').insert({
+    await supabase.from('notifications').insert({
       user_id: doc.user_id,
       title: 'Dokument abgelehnt',
       message: `Dein Dokument "${doc.file_name}" wurde abgelehnt. Grund: ${reviewNotes}`,
       type: 'document_rejected',
     });
-
-    if (error) {
-      toast({ title: 'Fehler', description: 'Ablehnung fehlgeschlagen.', variant: 'destructive' });
-      return;
-    }
-
-    // Delete the document
-    await supabase.storage.from('documents').remove([doc.file_path]);
-    await supabase.from('documents').delete().eq('id', doc.id);
 
     toast({ title: 'Erfolg', description: 'Dokument wurde abgelehnt und Mitarbeiter benachrichtigt.' });
     setSelectedDocument(null);
@@ -193,13 +217,12 @@ export default function AdminKycView() {
     fetchDocuments();
   };
 
-  // Filter documents based on type and search
+  // Filter documents based on status and type
+  const pendingDocuments = documents.filter(d => d.status === 'pending');
+  const approvedDocuments = documents.filter(d => d.status === 'approved');
+  const rejectedDocuments = documents.filter(d => d.status === 'rejected');
   const kycDocuments = documents.filter(d => 
     ['id_card', 'passport', 'certificate', 'contract'].includes(d.document_type || '')
-  );
-  const taskDocuments = documents.filter(d => d.task_id !== null);
-  const otherDocuments = documents.filter(d => 
-    !['id_card', 'passport', 'certificate', 'contract'].includes(d.document_type || '') && !d.task_id
   );
 
   const filterBySearch = (docs: KycDocument[]) => {
@@ -215,14 +238,27 @@ export default function AdminKycView() {
 
   const getDocumentsByTab = () => {
     switch (activeTab) {
+      case 'pending':
+        return filterBySearch(pendingDocuments);
+      case 'approved':
+        return filterBySearch(approvedDocuments);
+      case 'rejected':
+        return filterBySearch(rejectedDocuments);
       case 'kyc':
         return filterBySearch(kycDocuments);
-      case 'tasks':
-        return filterBySearch(taskDocuments);
-      case 'other':
-        return filterBySearch(otherDocuments);
       default:
         return filterBySearch(documents);
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">Genehmigt</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30">Abgelehnt</Badge>;
+      default:
+        return <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30">Ausstehend</Badge>;
     }
   };
 
@@ -255,11 +291,14 @@ export default function AdminKycView() {
 
         {/* Employee info */}
         <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">
-              {doc.profile?.first_name} {doc.profile?.last_name}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">
+                {doc.profile?.first_name} {doc.profile?.last_name}
+              </span>
+            </div>
+            {statusBadge(doc.status)}
           </div>
 
           {doc.task && (
@@ -370,12 +409,12 @@ export default function AdminKycView() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-purple-500" />
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{taskDocuments.length}</p>
-                <p className="text-xs text-muted-foreground">Auftrags-Dokumente</p>
+                <p className="text-2xl font-bold">{approvedDocuments.length}</p>
+                <p className="text-xs text-muted-foreground">Genehmigt</p>
               </div>
             </div>
           </CardContent>
@@ -383,12 +422,12 @@ export default function AdminKycView() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <Filter className="h-5 w-5 text-green-500" />
+              <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <XCircle className="h-5 w-5 text-red-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{otherDocuments.length}</p>
-                <p className="text-xs text-muted-foreground">Sonstige</p>
+                <p className="text-2xl font-bold">{rejectedDocuments.length}</p>
+                <p className="text-xs text-muted-foreground">Abgelehnt</p>
               </div>
             </div>
           </CardContent>
@@ -399,20 +438,20 @@ export default function AdminKycView() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pending" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Alle
+            <Clock className="h-4 w-4" />
+            Ausstehend ({pendingDocuments.length})
+          </TabsTrigger>
+          <TabsTrigger value="approved" className="gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Genehmigt
+          </TabsTrigger>
+          <TabsTrigger value="rejected" className="gap-2">
+            <XCircle className="h-4 w-4" />
+            Abgelehnt
           </TabsTrigger>
           <TabsTrigger value="kyc" className="gap-2">
             <FileCheck className="h-4 w-4" />
             KYC
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-2">
-            <Clock className="h-4 w-4" />
-            Aufträge
-          </TabsTrigger>
-          <TabsTrigger value="other" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Sonstige
           </TabsTrigger>
         </TabsList>
 
