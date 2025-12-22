@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +62,9 @@ export default function AdminKycView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchDocuments();
@@ -149,72 +152,104 @@ export default function AdminKycView() {
   };
 
   const handleApprove = async (doc: KycDocument) => {
-    // Update document status in database
-    const { error: updateError } = await supabase
-      .from('documents')
-      .update({ 
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: (await supabase.auth.getUser()).data.user?.id,
-        review_notes: reviewNotes || null
-      })
-      .eq('id', doc.id);
-
-    if (updateError) {
-      toast({ title: 'Fehler', description: 'Genehmigung fehlgeschlagen.', variant: 'destructive' });
+    if (!user) {
+      toast({ title: 'Fehler', description: 'Nicht eingeloggt.', variant: 'destructive' });
       return;
     }
+    
+    setIsProcessing(true);
+    
+    try {
+      // Update document status in database
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ 
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
+          review_notes: reviewNotes || null
+        })
+        .eq('id', doc.id);
 
-    // Create notification for the user
-    await supabase.from('notifications').insert({
-      user_id: doc.user_id,
-      title: 'Dokument genehmigt',
-      message: `Dein Dokument "${doc.file_name}" wurde genehmigt.${reviewNotes ? ` Anmerkung: ${reviewNotes}` : ''}`,
-      type: 'document_approved',
-    });
+      if (updateError) {
+        console.error('Approve error:', updateError);
+        toast({ title: 'Fehler', description: `Genehmigung fehlgeschlagen: ${updateError.message}`, variant: 'destructive' });
+        return;
+      }
 
-    toast({ title: 'Erfolg', description: 'Dokument wurde genehmigt und Mitarbeiter benachrichtigt.' });
-    setSelectedDocument(null);
-    setReviewNotes('');
-    setPreviewUrl(null);
-    fetchDocuments();
+      // Create notification for the user
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: doc.user_id,
+        title: 'Dokument genehmigt',
+        message: `Dein Dokument "${doc.file_name}" wurde genehmigt.${reviewNotes ? ` Anmerkung: ${reviewNotes}` : ''}`,
+        type: 'document_approved',
+      });
+      
+      if (notifError) {
+        console.error('Notification error:', notifError);
+      }
+
+      toast({ title: 'Erfolg', description: 'Dokument wurde genehmigt und Mitarbeiter benachrichtigt.' });
+      setSelectedDocument(null);
+      setReviewNotes('');
+      setPreviewUrl(null);
+      await fetchDocuments();
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleReject = async (doc: KycDocument) => {
+    if (!user) {
+      toast({ title: 'Fehler', description: 'Nicht eingeloggt.', variant: 'destructive' });
+      return;
+    }
+    
     if (!reviewNotes.trim()) {
       toast({ title: 'Hinweis', description: 'Bitte gib einen Ablehnungsgrund an.', variant: 'destructive' });
       return;
     }
 
-    // Update document status in database
-    const { error: updateError } = await supabase
-      .from('documents')
-      .update({ 
-        status: 'rejected',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: (await supabase.auth.getUser()).data.user?.id,
-        review_notes: reviewNotes
-      })
-      .eq('id', doc.id);
+    setIsProcessing(true);
+    
+    try {
+      // Update document status in database
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ 
+          status: 'rejected',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
+          review_notes: reviewNotes
+        })
+        .eq('id', doc.id);
 
-    if (updateError) {
-      toast({ title: 'Fehler', description: 'Ablehnung fehlgeschlagen.', variant: 'destructive' });
-      return;
+      if (updateError) {
+        console.error('Reject error:', updateError);
+        toast({ title: 'Fehler', description: `Ablehnung fehlgeschlagen: ${updateError.message}`, variant: 'destructive' });
+        return;
+      }
+
+      // Create notification for the user
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: doc.user_id,
+        title: 'Dokument abgelehnt',
+        message: `Dein Dokument "${doc.file_name}" wurde abgelehnt. Grund: ${reviewNotes}`,
+        type: 'document_rejected',
+      });
+      
+      if (notifError) {
+        console.error('Notification error:', notifError);
+      }
+
+      toast({ title: 'Erfolg', description: 'Dokument wurde abgelehnt und Mitarbeiter benachrichtigt.' });
+      setSelectedDocument(null);
+      setReviewNotes('');
+      setPreviewUrl(null);
+      await fetchDocuments();
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Create notification for the user
-    await supabase.from('notifications').insert({
-      user_id: doc.user_id,
-      title: 'Dokument abgelehnt',
-      message: `Dein Dokument "${doc.file_name}" wurde abgelehnt. Grund: ${reviewNotes}`,
-      type: 'document_rejected',
-    });
-
-    toast({ title: 'Erfolg', description: 'Dokument wurde abgelehnt und Mitarbeiter benachrichtigt.' });
-    setSelectedDocument(null);
-    setReviewNotes('');
-    setPreviewUrl(null);
-    fetchDocuments();
   };
 
   // Filter documents based on status and type - KYC tab shows only ID cards and passports
@@ -586,17 +621,19 @@ export default function AdminKycView() {
               <Button
                 variant="destructive"
                 className="gap-2"
+                disabled={isProcessing}
                 onClick={() => selectedDocument && handleReject(selectedDocument)}
               >
                 <XCircle className="h-4 w-4" />
-                Ablehnen
+                {isProcessing ? 'Wird verarbeitet...' : 'Ablehnen'}
               </Button>
               <Button
                 className="gap-2"
+                disabled={isProcessing}
                 onClick={() => selectedDocument && handleApprove(selectedDocument)}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Genehmigen
+                {isProcessing ? 'Wird verarbeitet...' : 'Genehmigen'}
               </Button>
             </div>
           </div>
