@@ -16,9 +16,10 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 import WorkflowStepCard from './WorkflowStepCard';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Calendar, User, Euro, AlertCircle, MessageSquare, CheckCircle2, 
-  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video, Phone, Sparkles
+  FileUp, Mail, Key, UserCheck, Clock, Trophy, PartyPopper, Eye, EyeOff, RefreshCw, Globe, ExternalLink, X, Maximize2, Search, RefreshCcw, FileText, ArrowRight, ChevronDown, Video, Phone, Sparkles, Loader2, Info
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -141,7 +142,8 @@ export default function EmployeeTasksView() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [webIdentDialog, setWebIdentDialog] = useState<{ open: boolean; url: string; taskTitle: string; taskId: string }>({ open: false, url: '', taskTitle: '', taskId: '' });
   const [videoChatDialog, setVideoChatDialog] = useState<{ open: boolean; task: TaskWithDetails | null }>({ open: false, task: null });
-  const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
+const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
+  const [videoChatConfirmed, setVideoChatConfirmed] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const tabContext = useTabContext();
@@ -721,11 +723,21 @@ export default function EmployeeTasksView() {
     if (step === 5) {
       // Open Web-Ident dialog if URL exists
       if (task.web_ident_url) {
+        setVideoChatConfirmed(false); // Reset confirmation when opening dialog
         setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title, taskId: task.id });
         return;
       }
       // Only proceed to step 6 when user explicitly confirms video chat is done
+      if (!videoChatConfirmed) {
+        toast({
+          title: 'Bestätigung erforderlich',
+          description: 'Bitte bestätige, dass du den Videochat abgeschlossen hast.',
+          variant: 'destructive',
+        });
+        return;
+      }
       await setWorkflowStep(task, 6);
+      setVideoChatConfirmed(false);
       return;
     }
 
@@ -1317,13 +1329,121 @@ export default function EmployeeTasksView() {
                         </div>
                       )}
                       
-                      {/* SMS Code display at top - show when available */}
-                      {selectedTask.smsRequest?.sms_code && (
+                      {/* SMS Code display / Waiting indicator for Step 4 */}
+                      {currentStep === 4 && (
+                        <div className="p-4 rounded-lg border bg-gradient-to-r from-primary/5 to-transparent">
+                          {selectedTask.smsRequest?.sms_code ? (
+                            <SmsCodeDisplay
+                              smsCode={selectedTask.smsRequest.sms_code}
+                              onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                              isResending={resendingCode === selectedTask.id}
+                            />
+                          ) : selectedTask.smsRequest ? (
+                            <div className="flex flex-col items-center justify-center py-6 text-center">
+                              <div className="relative">
+                                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                                </div>
+                                <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/30 animate-ping" />
+                              </div>
+                              <p className="font-semibold text-lg mb-1">Warte auf SMS-Code</p>
+                              <p className="text-sm text-muted-foreground max-w-xs">
+                                Der Admin wurde benachrichtigt. Dein SMS-Code wird in Kürze bereitgestellt.
+                              </p>
+                              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                Werktags 9-18 Uhr: ca. 30 Minuten
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center py-4 text-center">
+                              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                                <MessageSquare className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                              <p className="font-medium mb-1">Demo-Daten anfordern</p>
+                              <p className="text-sm text-muted-foreground">
+                                Klicke unten auf "Demo-Daten anfordern", um den SMS-Code zu erhalten.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* SMS Code display for other steps when available */}
+                      {currentStep !== 4 && selectedTask.smsRequest?.sms_code && (
                         <SmsCodeDisplay
                           smsCode={selectedTask.smsRequest.sms_code}
                           onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
                           isResending={resendingCode === selectedTask.id}
                         />
+                      )}
+
+                      {/* Step 5: Videochat section with confirmation */}
+                      {currentStep === 5 && (
+                        <div className="p-4 rounded-lg border bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border-cyan-500/20">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                              <Video className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">Videochat durchführen</h4>
+                              <p className="text-sm text-muted-foreground">Video-Verifizierung mit Demo-Daten</p>
+                            </div>
+                          </div>
+
+                          {/* SMS Code elegant display */}
+                          {selectedTask.smsRequest?.sms_code && (
+                            <div className="flex items-center gap-4 p-3 mb-4 bg-primary/10 rounded-lg border border-primary/20">
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-primary" />
+                                <span className="text-xs font-medium text-primary uppercase tracking-wide">SMS-Code</span>
+                              </div>
+                              <span className="text-2xl font-mono font-bold text-primary tracking-[0.3em]">
+                                {selectedTask.smsRequest.sms_code}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Important notice about external opening */}
+                          <div className="p-3 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                              <p className="text-sm text-amber-700 dark:text-amber-400">
+                                Die meisten Videochat-Seiten können nicht in einem eingebetteten Fenster geladen werden. 
+                                <strong> Bitte öffne die Seite extern</strong> über den Button "Extern Öffnen".
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Confirmation checkbox */}
+                          <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border">
+                            <Checkbox
+                              id="videochat-confirm"
+                              checked={videoChatConfirmed}
+                              onCheckedChange={(checked) => setVideoChatConfirmed(checked === true)}
+                              className="mt-0.5"
+                            />
+                            <label htmlFor="videochat-confirm" className="text-sm cursor-pointer leading-relaxed">
+                              Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe und die Verifizierung durchgeführt wurde.
+                            </label>
+                          </div>
+
+                          {/* Buttons */}
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            {selectedTask.web_ident_url && (
+                              <Button
+                                variant="default"
+                                className="gap-2"
+                                asChild
+                              >
+                                <a href={selectedTask.web_ident_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                  Extern Öffnen
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       )}
 
                       {/* Step Notes - separate note for each step */}
@@ -1423,10 +1543,19 @@ export default function EmployeeTasksView() {
                                 if (step === 3) return 'Weiter (Entscheidung)';
                                 if (step === 4) {
                                   if (selectedTask.smsRequest?.sms_code) return 'SMS-Code erhalten → Weiter';
-                                  if (selectedTask.smsRequest) return 'Warte auf SMS-Code...';
+                                  if (selectedTask.smsRequest) return (
+                                    <span className="flex items-center gap-2">
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Warte auf SMS-Code...
+                                    </span>
+                                  );
                                   return 'Demo-Daten anfordern';
                                 }
-                                if (step === 5) return selectedTask.web_ident_url ? 'Videochat öffnen' : 'Videochat erledigt → weiter';
+                                if (step === 5) {
+                                  if (selectedTask.web_ident_url) return 'Extern Öffnen';
+                                  if (videoChatConfirmed) return 'Videochat erledigt → weiter';
+                                  return 'Bitte Checkbox bestätigen';
+                                }
                                 if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
                                 if (step === 8) return 'Auftrag abschließen';
                                 return 'Weiter';
@@ -1604,57 +1733,101 @@ export default function EmployeeTasksView() {
         </DialogContent>
       </Dialog>
 
-      {/* Web-Ident Dialog - Elegant Design */}
+      {/* Web-Ident Dialog - Elegant Design with External Focus */}
       <Dialog open={webIdentDialog.open} onOpenChange={(open) => setWebIdentDialog({ ...webIdentDialog, open })}>
-        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden [&>button]:hidden">
+        <DialogContent className="max-w-2xl p-0 overflow-hidden [&>button]:hidden">
           {/* Custom Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-background to-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Video className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-background to-cyan-500/5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Video className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-lg">{webIdentDialog.taskTitle}</h3>
-                <p className="text-xs text-muted-foreground">Video-Verifizierung</p>
+                <p className="text-sm text-muted-foreground">Video-Verifizierung</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Phone Number Display */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' })}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Phone Number & SMS Code */}
+            <div className="flex flex-wrap gap-3">
               {(() => {
                 const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
-                if (currentTask?.customer_phone) {
-                  return (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border">
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm font-medium">{currentTask.customer_phone}</span>
-                    </div>
-                  );
-                }
-                return null;
+                return (
+                  <>
+                    {currentTask?.customer_phone && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg border">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{currentTask.customer_phone}</span>
+                      </div>
+                    )}
+                    {currentTask?.smsRequest?.sms_code && (
+                      <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+                        <MessageSquare className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium text-primary uppercase tracking-wide">SMS-Code</span>
+                        <span className="text-2xl font-mono font-bold text-primary tracking-[0.3em]">
+                          {currentTask.smsRequest.sms_code}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
               })()}
+            </div>
+
+            {/* Important Notice */}
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">Wichtiger Hinweis</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Die Videochat-Seite kann aus Sicherheitsgründen nicht in einem eingebetteten Fenster angezeigt werden. 
+                    Bitte öffne die Seite in einem neuen Tab über den Button unten.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Confirmation Checkbox */}
+            <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-xl border">
+              <Checkbox
+                id="videochat-dialog-confirm"
+                checked={videoChatConfirmed}
+                onCheckedChange={(checked) => setVideoChatConfirmed(checked === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="videochat-dialog-confirm" className="text-sm cursor-pointer leading-relaxed">
+                Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe und die Verifizierung durchgeführt wurde.
+              </label>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                className="flex-1 gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
+                asChild
+              >
+                <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  Extern Öffnen
+                </a>
+              </Button>
               
-              {/* SMS Code Display - Prominent when available */}
-              {(() => {
-                const currentTask = tasks.find(t => t.id === webIdentDialog.taskId);
-                if (currentTask?.smsRequest?.sms_code) {
-                  return (
-                    <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
-                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Code</span>
-                      <span className="text-xl font-mono font-bold text-primary tracking-[0.3em]">
-                        {currentTask.smsRequest.sms_code}
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-              
-              {/* Action Buttons */}
               <Button 
                 variant="outline" 
-                size="sm" 
-                className="gap-2 border-primary/20 hover:bg-primary/5"
+                className="gap-2"
                 onClick={() => {
                   if (webIdentDialog.taskId) {
                     handleRequestSms(webIdentDialog.taskId);
@@ -1662,37 +1835,35 @@ export default function EmployeeTasksView() {
                 }}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">SMS anfordern</span>
-              </Button>
-              
-              <Button variant="outline" size="sm" asChild className="gap-2 border-muted-foreground/20">
-                <a href={webIdentDialog.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                  <span className="hidden sm:inline">Extern</span>
-                </a>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' })}
-              >
-                <X className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Schließen</span>
+                SMS anfordern
               </Button>
             </div>
-          </div>
-          
-          {/* iframe Container */}
-          <div className="flex-1 h-full relative bg-muted/30">
-            <iframe
-              src={webIdentDialog.url}
-              className="w-full h-[calc(90vh-70px)] border-0"
-              title="Web-Ident Verifizierung"
-              allow="camera; microphone; geolocation; fullscreen"
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-presentation"
-            />
+
+            {/* Complete Button */}
+            <div className="pt-4 border-t">
+              <Button
+                className="w-full gap-2"
+                disabled={!videoChatConfirmed}
+                onClick={async () => {
+                  const taskId = webIdentDialog.taskId;
+                  setWebIdentDialog({ open: false, url: '', taskTitle: '', taskId: '' });
+                  if (taskId) {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) {
+                      await setWorkflowStep(task, 6);
+                      setVideoChatConfirmed(false);
+                      toast({
+                        title: 'Videochat abgeschlossen',
+                        description: 'Weiter mit Schritt 6: Unterlagen abwarten.',
+                      });
+                    }
+                  }
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Videochat abgeschlossen – Weiter zu Schritt 6
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
