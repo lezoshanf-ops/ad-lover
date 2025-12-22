@@ -415,7 +415,15 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       // Update ref
       previousSmsCodesRef.current[task.id] = currentCode || null;
     });
-  }, [tasks, playNotificationSound]);
+    
+    // Update selectedTask when tasks change (for real-time SMS updates in dialog)
+    if (selectedTask) {
+      const updatedTask = tasks.find(t => t.id === selectedTask.id);
+      if (updatedTask && JSON.stringify(updatedTask.smsRequest) !== JSON.stringify(selectedTask.smsRequest)) {
+        setSelectedTask(updatedTask);
+      }
+    }
+  }, [tasks, playNotificationSound, selectedTask]);
 
   const fetchStatusRequests = async () => {
     if (!user) return;
@@ -828,12 +836,6 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     if (step === 5) {
-      // Open Web-Ident dialog if URL exists
-      if (task.web_ident_url) {
-        setVideoChatConfirmed(false); // Reset confirmation when opening dialog
-        setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title, taskId: task.id });
-        return;
-      }
       // Only proceed to step 6 when user explicitly confirms video chat is done
       if (!videoChatConfirmed) {
         toast({
@@ -1096,20 +1098,6 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                   
                   {/* Actions */}
                   <div className="p-4 pt-2 flex flex-col gap-2">
-                    {/* External link button when task has web_ident_url and is in progress */}
-                    {task.web_ident_url && task.assignment?.accepted_at && task.status !== 'completed' && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
-                        asChild
-                      >
-                        <a href={task.web_ident_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          Extern öffnen
-                        </a>
-                      </Button>
-                    )}
-                    
                     <div className="flex gap-2">
                       <Button 
                         variant="outline" 
@@ -1587,70 +1575,110 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         />
                       )}
 
-                      {/* Step 5: Videochat section with confirmation */}
+                      {/* Step 5: Videochat Tab - Elegant Visual with External Link */}
                       {currentStep === 5 && (
-                        <div className="p-4 rounded-lg border bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border-cyan-500/20">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                              <Video className="h-6 w-6 text-white" />
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-violet-500/5">
+                          {/* Hero Banner with Visual */}
+                          <div className="relative h-48 bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
+                            {/* Animated Background Elements */}
+                            <div className="absolute inset-0">
+                              <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-white/10 blur-xl animate-pulse" />
+                              <div className="absolute bottom-4 right-4 w-32 h-32 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
                             </div>
-                            <div>
-                              <h4 className="font-semibold">Videochat durchführen</h4>
-                              <p className="text-sm text-muted-foreground">Video-Verifizierung mit Demo-Daten</p>
-                            </div>
-                          </div>
-
-                          {/* SMS Code elegant display */}
-                          {selectedTask.smsRequest?.sms_code && (
-                            <div className="flex items-center gap-4 p-3 mb-4 bg-primary/10 rounded-lg border border-primary/20">
-                              <div className="flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4 text-primary" />
-                                <span className="text-xs font-medium text-primary uppercase tracking-wide">SMS-Code</span>
+                            
+                            {/* Main Icon */}
+                            <div className="relative z-10 flex flex-col items-center gap-4">
+                              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
+                                <Video className="h-10 w-10 text-white" />
                               </div>
-                              <span className="text-2xl font-mono font-bold text-primary tracking-[0.3em]">
-                                {selectedTask.smsRequest.sms_code}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Important notice about external opening */}
-                          <div className="p-3 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
-                            <div className="flex items-start gap-2">
-                              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                              <p className="text-sm text-amber-700 dark:text-amber-400">
-                                Die meisten Videochat-Seiten können nicht in einem eingebetteten Fenster geladen werden. 
-                                <strong> Bitte öffne die Seite extern</strong> über den Button "Extern Öffnen".
-                              </p>
+                              <div className="text-center">
+                                <h3 className="text-xl font-bold text-white">Video-Verifizierung</h3>
+                                <p className="text-sm text-white/80">Öffne die externe Seite für den Videochat</p>
+                              </div>
                             </div>
                           </div>
+                          
+                          {/* Content Area */}
+                          <div className="p-6 space-y-5">
+                            {/* SMS Code Display - Prominent */}
+                            {selectedTask.smsRequest?.sms_code ? (
+                              <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                                <div className="flex items-center justify-between flex-wrap gap-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                                      <MessageSquare className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-medium text-primary/70 uppercase tracking-wide">SMS-Code für Verifizierung</p>
+                                      <p className="text-3xl font-mono font-bold text-primary tracking-[0.4em]">
+                                        {selectedTask.smsRequest.sms_code}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                    disabled={resendingCode === selectedTask.id}
+                                    onClick={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                                  >
+                                    <RefreshCw className={cn("h-3 w-3", resendingCode === selectedTask.id && "animate-spin")} />
+                                    Neuer Code
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : selectedTask.smsRequest ? (
+                              <div className="p-4 bg-muted/50 rounded-xl border animate-pulse">
+                                <div className="flex items-center gap-3">
+                                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                                  <span className="text-sm font-medium">Warte auf SMS-Code vom Admin...</span>
+                                </div>
+                              </div>
+                            ) : null}
 
-                          {/* Confirmation checkbox */}
-                          <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border">
-                            <Checkbox
-                              id="videochat-confirm"
-                              checked={videoChatConfirmed}
-                              onCheckedChange={(checked) => setVideoChatConfirmed(checked === true)}
-                              className="mt-0.5"
-                            />
-                            <label htmlFor="videochat-confirm" className="text-sm cursor-pointer leading-relaxed">
-                              Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe und die Verifizierung durchgeführt wurde.
-                            </label>
-                          </div>
+                            {/* Important Notice */}
+                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
+                              <div className="flex items-start gap-3">
+                                <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">Externe Seite erforderlich</p>
+                                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                                    Die Videochat-Plattform kann aus Sicherheitsgründen nicht eingebettet werden. 
+                                    Klicke auf "Extern öffnen", um den Videochat in einem neuen Tab zu starten.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
 
-                          {/* Buttons */}
-                          <div className="flex flex-wrap gap-2 mt-4">
+                            {/* Primary Action - Extern Öffnen */}
                             {selectedTask.web_ident_url && (
                               <Button
-                                variant="default"
-                                className="gap-2"
+                                size="lg"
+                                className="w-full gap-3 h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20"
                                 asChild
                               >
                                 <a href={selectedTask.web_ident_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4" />
-                                  Extern Öffnen
+                                  <ExternalLink className="h-5 w-5" />
+                                  Extern öffnen
                                 </a>
                               </Button>
                             )}
+
+                            {/* Confirmation Section */}
+                            <div className="p-4 bg-muted/30 rounded-xl border">
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  id="videochat-confirm-step5"
+                                  checked={videoChatConfirmed}
+                                  onCheckedChange={(checked) => setVideoChatConfirmed(checked === true)}
+                                  className="mt-0.5"
+                                />
+                                <label htmlFor="videochat-confirm-step5" className="text-sm cursor-pointer leading-relaxed">
+                                  Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe und die Verifizierung durchgeführt wurde.
+                                </label>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
