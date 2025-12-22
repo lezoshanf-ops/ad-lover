@@ -280,7 +280,13 @@ export default function AdminTasksView() {
   };
 
   const handleRevokeAssignment = async (taskId: string) => {
-    // Delete the assignment and reset task status to pending
+    // First, delete any SMS code requests for this task
+    await supabase
+      .from('sms_code_requests')
+      .delete()
+      .eq('task_id', taskId);
+
+    // Delete the assignment (this removes workflow progress)
     const { error: assignmentError } = await supabase
       .from('task_assignments')
       .delete()
@@ -291,6 +297,7 @@ export default function AdminTasksView() {
       return;
     }
 
+    // Reset task status to pending
     const { error: taskError } = await supabase
       .from('tasks')
       .update({ status: 'pending' })
@@ -299,7 +306,7 @@ export default function AdminTasksView() {
     if (taskError) {
       toast({ title: 'Fehler', description: 'Status konnte nicht zurückgesetzt werden.', variant: 'destructive' });
     } else {
-      toast({ title: 'Erfolg', description: 'Auftrag wurde entzogen und steht wieder zur Zuweisung bereit.' });
+      toast({ title: 'Erfolg', description: 'Auftrag wurde entzogen. SMS-History gelöscht, Workflow auf Schritt 1 zurückgesetzt.' });
       fetchTasks();
     }
   };

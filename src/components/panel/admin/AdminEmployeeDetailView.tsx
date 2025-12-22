@@ -203,10 +203,16 @@ export default function AdminEmployeeDetailView({ employee, onBack }: AdminEmplo
   };
 
   const handleRemoveTask = async (taskId: string) => {
-    // Remove assignment and reset task status
+    // Delete SMS code requests for this task first
+    await supabase.from('sms_code_requests').delete().eq('task_id', taskId);
+    
+    // Remove assignment (this removes workflow progress, resets to step 1 when re-assigned)
     await supabase.from('task_assignments').delete().eq('task_id', taskId).eq('user_id', employee.user_id);
+    
+    // Reset task status to pending
     await supabase.from('tasks').update({ status: 'pending' }).eq('id', taskId);
-    toast({ title: 'Auftrag entzogen', description: 'Der Auftrag wurde dem Mitarbeiter entzogen.' });
+    
+    toast({ title: 'Auftrag entzogen', description: 'SMS-History gelöscht, Workflow auf Schritt 1 zurückgesetzt.' });
     fetchEmployeeData();
   };
 
