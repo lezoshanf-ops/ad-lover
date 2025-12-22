@@ -15,6 +15,7 @@ import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 import WorkflowStepCard from './WorkflowStepCard';
+import { AnimatedCopyButton, AnimatedSmsCopy } from '@/components/ui/animated-copy-button';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -1481,55 +1482,31 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                           </p>
                           <div className="space-y-3">
                             {selectedTask.test_email && (
-                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border">
+                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border hover:border-info/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-sm min-w-0">
                                   <Mail className="h-4 w-4 text-info shrink-0" />
                                   <span className="font-mono truncate">{selectedTask.test_email}</span>
                                 </div>
-                                <Button
+                                <AnimatedCopyButton
+                                  textToCopy={selectedTask.test_email}
                                   variant="ghost"
-                                  size="sm"
-                                  className="gap-1.5 text-info hover:bg-info/10 shrink-0"
-                                  onClick={() => handleCopySmsCode(selectedTask.test_email!)}
-                                >
-                                  {copiedCode === selectedTask.test_email ? (
-                                    <>
-                                      <Check className="h-3 w-3" />
-                                      Kopiert
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3 w-3" />
-                                      Kopieren
-                                    </>
-                                  )}
-                                </Button>
+                                  className="text-info hover:bg-info/10"
+                                  onCopied={() => toast({ title: 'Kopiert!', description: 'E-Mail in die Zwischenablage kopiert.' })}
+                                />
                               </div>
                             )}
                             {selectedTask.test_password && (
-                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border">
+                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border hover:border-info/50 transition-colors group">
                                 <div className="flex items-center gap-2 text-sm min-w-0">
                                   <Key className="h-4 w-4 text-info shrink-0" />
                                   <span className="font-mono truncate">{selectedTask.test_password}</span>
                                 </div>
-                                <Button
+                                <AnimatedCopyButton
+                                  textToCopy={selectedTask.test_password}
                                   variant="ghost"
-                                  size="sm"
-                                  className="gap-1.5 text-info hover:bg-info/10 shrink-0"
-                                  onClick={() => handleCopySmsCode(selectedTask.test_password!)}
-                                >
-                                  {copiedCode === selectedTask.test_password ? (
-                                    <>
-                                      <Check className="h-3 w-3" />
-                                      Kopiert
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3 w-3" />
-                                      Kopieren
-                                    </>
-                                  )}
-                                </Button>
+                                  className="text-info hover:bg-info/10"
+                                  onCopied={() => toast({ title: 'Kopiert!', description: 'Passwort in die Zwischenablage kopiert.' })}
+                                />
                               </div>
                             )}
                           </div>
@@ -1591,7 +1568,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               </div>
                             )}
                             
-                            {/* SMS Code Display - Elegant Card */}
+                            {/* SMS Code Display - Elegant Animated Card */}
                             {selectedTask.smsRequest?.sms_code ? (
                               <div className="p-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20">
                                 <div className="flex items-center gap-2 mb-3">
@@ -1601,29 +1578,11 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                   <p className="text-xs font-semibold text-primary uppercase tracking-wide">SMS-Code für Verifizierung</p>
                                 </div>
                                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                                  <div className="flex items-center gap-3 p-3 bg-background/80 rounded-lg border min-w-0">
-                                    <p className="text-2xl sm:text-3xl font-mono font-bold text-primary tracking-[0.3em]">
-                                      {selectedTask.smsRequest.sms_code}
-                                    </p>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="gap-1.5 text-primary hover:bg-primary/10 shrink-0"
-                                      onClick={() => handleCopySmsCode(selectedTask.smsRequest!.sms_code!)}
-                                    >
-                                      {copiedCode === selectedTask.smsRequest.sms_code ? (
-                                        <>
-                                          <Check className="h-4 w-4" />
-                                          Kopiert
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Copy className="h-4 w-4" />
-                                          Kopieren
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
+                                  {/* Animated SMS Copy Component */}
+                                  <AnimatedSmsCopy 
+                                    code={selectedTask.smsRequest.sms_code}
+                                    onCopied={() => toast({ title: 'Kopiert!', description: 'SMS-Code in die Zwischenablage kopiert.' })}
+                                  />
                                   <Button
                                     variant="outline"
                                     size="sm"

@@ -114,6 +114,19 @@ export default {
           "0%, 100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.4)" },
           "50%": { transform: "scale(1.02)", boxShadow: "0 0 0 4px rgba(239, 68, 68, 0)" },
         },
+        "copy-success": {
+          "0%": { transform: "scale(0)", opacity: "0" },
+          "50%": { transform: "scale(1.2)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "copy-checkmark": {
+          "0%": { strokeDashoffset: "24" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        "copy-ring": {
+          "0%": { transform: "scale(0.8)", opacity: "1" },
+          "100%": { transform: "scale(1.5)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -121,6 +134,9 @@ export default {
         "fade-up": "fade-up 0.6s ease-out forwards",
         "fade-in": "fade-in 0.4s ease-out forwards",
         "priority-pulse": "priority-pulse 2s ease-in-out infinite",
+        "copy-success": "copy-success 0.4s ease-out forwards",
+        "copy-checkmark": "copy-checkmark 0.3s ease-out 0.1s forwards",
+        "copy-ring": "copy-ring 0.5s ease-out forwards",
       },
     },
   },
