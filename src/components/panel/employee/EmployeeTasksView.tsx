@@ -334,6 +334,20 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_assignments' }, (payload) => {
           const oldData = payload.old as Record<string, unknown> | null;
           if (oldData?.user_id === user.id) {
+            // Task was revoked - close dialog if this task was selected
+            if (oldData?.task_id) {
+              setSelectedTask(prev => {
+                if (prev && prev.id === oldData.task_id) {
+                  toast({
+                    title: 'Auftrag entzogen',
+                    description: 'Dieser Auftrag wurde dir entzogen.',
+                    variant: 'destructive',
+                  });
+                  return null;
+                }
+                return prev;
+              });
+            }
             fetchTasks();
           }
         })
@@ -1729,12 +1743,14 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               <Button
                                 size="lg"
                                 className="w-full gap-3 h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20"
-                                asChild
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.open(selectedTask.web_ident_url!, '_blank', 'noopener,noreferrer');
+                                }}
                               >
-                                <a href={selectedTask.web_ident_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-5 w-5" />
-                                  Extern öffnen
-                                </a>
+                                <ExternalLink className="h-5 w-5" />
+                                Extern öffnen
                               </Button>
                             )}
 
