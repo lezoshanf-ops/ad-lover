@@ -1434,10 +1434,15 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                 Der Admin wurde benachrichtigt. Dein SMS-Code wird in Kürze bereitgestellt.
                               </p>
                               
-                              {/* Request timestamp */}
-                              <div className="flex items-center gap-2 mt-3 px-3 py-1.5 bg-muted/50 rounded-full text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                Angefragt um {format(new Date(selectedTask.smsRequest.requested_at), 'HH:mm', { locale: de })} Uhr
+                              {/* Request timestamp with relative time */}
+                              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  Angefragt um {format(new Date(selectedTask.smsRequest.requested_at), 'HH:mm', { locale: de })} Uhr
+                                </div>
+                                <div className="px-3 py-1.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
+                                  vor {formatDistanceStrict(new Date(selectedTask.smsRequest.requested_at), new Date(), { locale: de, addSuffix: false })}
+                                </div>
                               </div>
                               
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
