@@ -22,6 +22,7 @@ export default function AdminDashboard() {
     return sessionStorage.getItem('adminActiveTab') || 'tasks';
   });
   const [pendingSmsCount, setPendingSmsCount] = useState(0);
+  const [pendingKycCount, setPendingKycCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchPendingSmsCount();
+    fetchPendingKycCount();
     fetchUnreadMessages();
 
     const smsChannel = supabase
@@ -126,12 +128,20 @@ export default function AdminDashboard() {
         schema: 'public', 
         table: 'documents' 
       }, (payload) => {
-        if (payload.new?.document_type && ['id_card', 'passport', 'certificate', 'contract'].includes(payload.new.document_type)) {
+        if (payload.new?.document_type && ['id_card', 'passport'].includes(payload.new.document_type)) {
+          fetchPendingKycCount();
           toast({
             title: 'Neues KYC-Dokument',
             description: 'Ein Mitarbeiter hat ein neues Dokument zur Prüfung eingereicht.',
           });
         }
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'documents' 
+      }, () => {
+        fetchPendingKycCount();
       })
       .subscribe();
 
@@ -164,6 +174,16 @@ export default function AdminDashboard() {
     setPendingSmsCount(count || 0);
   };
 
+  const fetchPendingKycCount = async () => {
+    const { count } = await supabase
+      .from('documents')
+      .select('*', { count: 'exact', head: true })
+      .in('document_type', ['id_card', 'passport'])
+      .eq('status', 'pending');
+    
+    setPendingKycCount(count || 0);
+  };
+
   const handleLogoClick = () => {
     setActiveTab('tasks');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -183,7 +203,7 @@ export default function AdminDashboard() {
       items: [
         { id: 'sms', label: 'SMS-Codes', icon: MessageSquare, badge: pendingSmsCount > 0 ? pendingSmsCount : undefined },
         { id: 'vacation', label: 'Urlaubsanträge', icon: Calendar },
-        { id: 'kyc', label: 'KYC-Prüfung', icon: FileSearch },
+        { id: 'kyc', label: 'KYC-Prüfung', icon: FileSearch, badge: pendingKycCount > 0 ? pendingKycCount : undefined },
       ],
     },
     {

@@ -157,9 +157,18 @@ interface TaskWithDetails extends Task {
   smsRequest?: SmsCodeRequest;
 }
 
+// KYC document status type
+interface KycDocStatus {
+  pending: number;
+  approved: number;
+  rejected: number;
+  rejectedNotes: string[];
+}
+
 export default function EmployeeTasksView() {
   const [tasks, setTasks] = useState<TaskWithDetails[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, number>>({});
+  const [taskKycStatus, setTaskKycStatus] = useState<Record<string, KycDocStatus>>({});
   const [taskEvaluations, setTaskEvaluations] = useState<Record<string, boolean>>({});
   const [progressNotes, setProgressNotes] = useState<Record<string, string>>({});
   const [stepNotes, setStepNotes] = useState<Record<string, Record<string, string>>>({});
@@ -521,12 +530,13 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     if (assignments && assignments.length > 0) {
       const taskIds = assignments.map(a => a.task_id);
       
-      const [tasksRes, profilesRes, smsRes, docsRes, evalsRes] = await Promise.all([
+      const [tasksRes, profilesRes, smsRes, docsRes, evalsRes, kycDocsRes] = await Promise.all([
         supabase.from('tasks').select('*').in('id', taskIds).order('created_at', { ascending: false }),
         supabase.from('profiles').select('*'),
         supabase.from('sms_code_requests').select('*').in('task_id', taskIds).eq('user_id', user.id).order('requested_at', { ascending: false }),
         supabase.from('documents').select('id, task_id').eq('user_id', user.id).in('task_id', taskIds),
-        supabase.from('task_evaluations').select('task_id').eq('user_id', user.id).in('task_id', taskIds)
+        supabase.from('task_evaluations').select('task_id').eq('user_id', user.id).in('task_id', taskIds),
+        supabase.from('documents').select('id, task_id, status, document_type, review_notes').eq('user_id', user.id).in('task_id', taskIds).in('document_type', ['id_card', 'passport'])
       ]);
 
       const docCounts: Record<string, number> = {};
@@ -538,6 +548,28 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
         });
       }
       setTaskDocuments(docCounts);
+
+      // Process KYC document status per task
+      const kycStatusMap: Record<string, KycDocStatus> = {};
+      if (kycDocsRes.data) {
+        kycDocsRes.data.forEach(doc => {
+          if (doc.task_id) {
+            if (!kycStatusMap[doc.task_id]) {
+              kycStatusMap[doc.task_id] = { pending: 0, approved: 0, rejected: 0, rejectedNotes: [] };
+            }
+            const status = doc.status || 'pending';
+            if (status === 'pending') kycStatusMap[doc.task_id].pending++;
+            else if (status === 'approved') kycStatusMap[doc.task_id].approved++;
+            else if (status === 'rejected') {
+              kycStatusMap[doc.task_id].rejected++;
+              if (doc.review_notes) {
+                kycStatusMap[doc.task_id].rejectedNotes.push(doc.review_notes);
+              }
+            }
+          }
+        });
+      }
+      setTaskKycStatus(kycStatusMap);
 
       const evalMap: Record<string, boolean> = {};
       if (evalsRes.data) {
@@ -565,6 +597,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     } else {
       setTasks([]);
       setTaskDocuments({});
+      setTaskKycStatus({});
       setTaskEvaluations({});
     }
   };
@@ -1561,41 +1594,85 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       </div>
 
-                      {/* Task credentials if any - only visible from step 4 onwards with copy function */}
+                      {/* Task credentials - Elegant Card for External Site */}
                       {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 5 && (
-                        <div className="p-4 bg-info/10 rounded-lg border border-info/20">
-                          <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
-                            Test-Zugangsdaten – Für externe Seite kopieren
-                          </p>
-                          <div className="space-y-3">
-                            {selectedTask.test_email && (
-                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border hover:border-info/50 transition-colors group">
-                                <div className="flex items-center gap-2 text-sm min-w-0">
-                                  <Mail className="h-4 w-4 text-info shrink-0" />
-                                  <span className="font-mono truncate">{selectedTask.test_email}</span>
-                                </div>
-                                <AnimatedCopyButton
-                                  textToCopy={selectedTask.test_email}
-                                  variant="ghost"
-                                  className="text-info hover:bg-info/10"
-                                  onCopied={() => toast({ title: 'Kopiert!', description: 'E-Mail in die Zwischenablage kopiert.' })}
-                                />
-                              </div>
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5">
+                          {/* Compact Header */}
+                          <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                              <Key className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-white">Demo-Zugangsdaten</h4>
+                              <p className="text-xs text-white/70">Für die externe Seite</p>
+                            </div>
+                          </div>
+                          
+                          <div className="p-4 space-y-3">
+                            {/* Quick Copy All Button */}
+                            {selectedTask.test_email && selectedTask.test_password && (
+                              <Button
+                                variant="outline"
+                                className="w-full gap-2 h-11 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                onClick={async () => {
+                                  const text = `E-Mail: ${selectedTask.test_email}\nPasswort: ${selectedTask.test_password}`;
+                                  await navigator.clipboard.writeText(text);
+                                  toast({ title: 'Alle Zugangsdaten kopiert!', description: 'E-Mail & Passwort in die Zwischenablage kopiert.' });
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                                Alle Zugangsdaten kopieren
+                              </Button>
                             )}
-                            {selectedTask.test_password && (
-                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border hover:border-info/50 transition-colors group">
-                                <div className="flex items-center gap-2 text-sm min-w-0">
-                                  <Key className="h-4 w-4 text-info shrink-0" />
-                                  <span className="font-mono truncate">{selectedTask.test_password}</span>
+                            
+                            {/* Individual Fields */}
+                            <div className="grid gap-2">
+                              {selectedTask.test_email && (
+                                <div 
+                                  className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg border hover:bg-muted/80 transition-colors cursor-pointer group"
+                                  onClick={async () => {
+                                    await navigator.clipboard.writeText(selectedTask.test_email!);
+                                    toast({ title: 'Kopiert!', description: 'E-Mail kopiert.' });
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                      <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">E-Mail</p>
+                                      <p className="font-mono text-sm truncate">{selectedTask.test_email}</p>
+                                    </div>
+                                  </div>
+                                  <Copy className="h-4 w-4 text-muted-foreground group-hover:text-emerald-600 transition-colors shrink-0" />
                                 </div>
-                                <AnimatedCopyButton
-                                  textToCopy={selectedTask.test_password}
-                                  variant="ghost"
-                                  className="text-info hover:bg-info/10"
-                                  onCopied={() => toast({ title: 'Kopiert!', description: 'Passwort in die Zwischenablage kopiert.' })}
-                                />
-                              </div>
-                            )}
+                              )}
+                              {selectedTask.test_password && (
+                                <div 
+                                  className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg border hover:bg-muted/80 transition-colors cursor-pointer group"
+                                  onClick={async () => {
+                                    await navigator.clipboard.writeText(selectedTask.test_password!);
+                                    toast({ title: 'Kopiert!', description: 'Passwort kopiert.' });
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                                      <Key className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Passwort</p>
+                                      <p className="font-mono text-sm truncate">{selectedTask.test_password}</p>
+                                    </div>
+                                  </div>
+                                  <Copy className="h-4 w-4 text-muted-foreground group-hover:text-teal-600 transition-colors shrink-0" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Hint */}
+                            <p className="text-xs text-center text-muted-foreground">
+                              Klicke auf ein Feld, um es zu kopieren
+                            </p>
                           </div>
                         </div>
                       )}
@@ -1648,12 +1725,88 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               </div>
                             </div>
                             
-                            {/* Upload Status */}
-                            <div className="flex items-center justify-center gap-2">
-                              <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${hasKycDocuments(selectedTask.id) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                {taskDocuments[selectedTask.id] || 0} / 2 Dokumente hochgeladen
-                              </span>
-                            </div>
+                            {/* Document Status Display */}
+                            {(() => {
+                              const kycStatus = taskKycStatus[selectedTask.id];
+                              const totalDocs = (kycStatus?.pending || 0) + (kycStatus?.approved || 0) + (kycStatus?.rejected || 0);
+                              
+                              return (
+                                <div className="space-y-3">
+                                  {/* Upload Counter */}
+                                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${totalDocs >= 2 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                                      {totalDocs} / 2 Dokumente
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Status Details */}
+                                  {totalDocs > 0 && (
+                                    <div className="flex items-center justify-center gap-3 flex-wrap text-xs">
+                                      {kycStatus?.pending > 0 && (
+                                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                          <Clock className="h-3 w-3" />
+                                          {kycStatus.pending} ausstehend
+                                        </span>
+                                      )}
+                                      {kycStatus?.approved > 0 && (
+                                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          {kycStatus.approved} genehmigt
+                                        </span>
+                                      )}
+                                      {kycStatus?.rejected > 0 && (
+                                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                          <X className="h-3 w-3" />
+                                          {kycStatus.rejected} abgelehnt
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Rejection Warning */}
+                                  {kycStatus?.rejected > 0 && (
+                                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/30">
+                                      <div className="flex items-start gap-2">
+                                        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                                        <div>
+                                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                                            Dokument(e) abgelehnt
+                                          </p>
+                                          {kycStatus.rejectedNotes.length > 0 && (
+                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                              Grund: {kycStatus.rejectedNotes.join(', ')}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                            Bitte lade neue Dokumente hoch.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* All Approved Message */}
+                                  {kycStatus?.approved >= 2 && kycStatus?.rejected === 0 && kycStatus?.pending === 0 && (
+                                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/30 flex items-center gap-2">
+                                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                                      <p className="text-sm text-green-700 dark:text-green-400">
+                                        Alle Dokumente genehmigt. Du kannst fortfahren.
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Pending Review Message */}
+                                  {kycStatus?.pending > 0 && kycStatus?.rejected === 0 && (
+                                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/30 flex items-center gap-2">
+                                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                      <p className="text-sm text-amber-700 dark:text-amber-400">
+                                        Dokumente werden geprüft. Du kannst bereits fortfahren.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             
                             {/* Upload Button */}
                             <Button
@@ -1662,17 +1815,12 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               onClick={() => handleGoToDocuments(selectedTask.id)}
                             >
                               <FileUp className="h-5 w-5" />
-                              {hasKycDocuments(selectedTask.id) ? 'Weitere Dokumente hochladen' : 'Ausweisdokumente hochladen'}
+                              {taskKycStatus[selectedTask.id]?.rejected > 0 
+                                ? 'Neue Dokumente hochladen'
+                                : hasKycDocuments(selectedTask.id) 
+                                  ? 'Weitere Dokumente hochladen' 
+                                  : 'Ausweisdokumente hochladen'}
                             </Button>
-                            
-                            {hasKycDocuments(selectedTask.id) && (
-                              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/30 flex items-center gap-2">
-                                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
-                                <p className="text-sm text-green-700 dark:text-green-400">
-                                  Dokumente hochgeladen. Du kannst jetzt fortfahren.
-                                </p>
-                              </div>
-                            )}
                           </div>
                         </div>
                       )}
