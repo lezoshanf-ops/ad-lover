@@ -777,13 +777,40 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     if (step === 4) {
-      // User needs to have SMS code before proceeding to step 5
+      // Step 4: Open external WebID page first, then request SMS code
+      if (task.web_ident_url) {
+        // Open external page in new tab
+        window.open(task.web_ident_url, '_blank', 'noopener,noreferrer');
+        
+        // Now request SMS code if not already requested
+        if (!task.smsRequest) {
+          await handleRequestSms(task.id);
+          toast({
+            title: 'Externe Seite geöffnet & Demo-Daten angefordert',
+            description: 'Die WebID-Seite wurde geöffnet. Warte auf den SMS-Code vom Admin.',
+          });
+          return;
+        }
+        
+        // SMS already requested, check if code received
+        if (task.smsRequest.sms_code) {
+          await setWorkflowStep(task, 5);
+          return;
+        }
+        
+        toast({
+          title: 'Warte auf SMS-Code',
+          description: 'Die externe Seite ist geöffnet. Der Admin hat die Anfrage erhalten.',
+        });
+        return;
+      }
+      
+      // No WebID URL - just proceed with SMS request
       if (task.smsRequest?.sms_code) {
         await setWorkflowStep(task, 5);
         return;
       }
 
-      // Request SMS code if not already requested
       if (!task.smsRequest) {
         await handleRequestSms(task.id);
         toast({
@@ -793,7 +820,6 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
         return;
       }
 
-      // SMS requested but not yet received
       toast({
         title: 'Warte auf SMS-Code',
         description: 'Der Admin hat die Anfrage erhalten. Bitte warte auf den Code.',
@@ -961,7 +987,12 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {filteredTasks.map((task) => {
-            const hasVideoChat = task.assignment?.accepted_at;
+            const workflowDigital = (task.assignment as any)?.workflow_digital;
+            const videoChatStatus = workflowDigital === true 
+              ? { text: 'Digitaler Ablauf gewählt', color: 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30 text-green-700 dark:text-green-400' }
+              : workflowDigital === false 
+                ? { text: 'Digitaler Ablauf abgelehnt', color: 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-400' }
+                : null;
             
             return (
               <Card key={task.id} className="overflow-hidden hover:shadow-lg transition-all border-primary/10 hover:border-primary/20">
@@ -997,12 +1028,16 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                     </Badge>
                   </div>
                   
-                  {/* Video Chat Status */}
-                  {hasVideoChat && (
-                    <div className="px-4 py-2 bg-green-50 dark:bg-green-900/20 border-y border-green-100 dark:border-green-900/30">
-                      <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Video-Chat akzeptiert
+                  {/* Video Chat Status - based on workflow_digital */}
+                  {videoChatStatus && (
+                    <div className={`px-4 py-2 border-y ${videoChatStatus.color}`}>
+                      <div className="flex items-center gap-2 text-sm">
+                        {workflowDigital === true ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                        {videoChatStatus.text}
                       </div>
                     </div>
                   )}
@@ -1045,47 +1080,63 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                   </div>
                   
                   {/* Actions */}
-                  <div className="p-4 pt-2 flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1 gap-2"
-                      onClick={() => {
-                        setDialogViewMode('details');
-                        setSelectedTask(task);
-                      }}
-                    >
-                      <FileText className="h-4 w-4" />
-                      Details
-                    </Button>
-                    {task.status === 'assigned' && !task.assignment?.accepted_at ? (
-                      isCheckedIn ? (
-                        <Button 
-                          className="flex-1 gap-2"
-                          onClick={() => handleAcceptTask(task.id)}
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                          Starten
-                        </Button>
-                      ) : (
-                        <Button 
-                          className="flex-1 gap-2" 
-                          disabled
-                        >
-                          Einstempeln zum Starten
-                        </Button>
-                      )
-                    ) : task.assignment?.accepted_at && task.status !== 'completed' ? (
+                  <div className="p-4 pt-2 flex flex-col gap-2">
+                    {/* External link button when task has web_ident_url and is in progress */}
+                    {task.web_ident_url && task.assignment?.accepted_at && task.status !== 'completed' && (
                       <Button 
+                        variant="outline" 
+                        className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                        asChild
+                      >
+                        <a href={task.web_ident_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Extern öffnen
+                        </a>
+                      </Button>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
                         className="flex-1 gap-2"
                         onClick={() => {
-                          setDialogViewMode('workflow');
+                          setDialogViewMode('details');
                           setSelectedTask(task);
                         }}
                       >
-                        <ArrowRight className="h-4 w-4" />
-                        Fortsetzen
+                        <FileText className="h-4 w-4" />
+                        Details
                       </Button>
-                    ) : null}
+                      {task.status === 'assigned' && !task.assignment?.accepted_at ? (
+                        isCheckedIn ? (
+                          <Button 
+                            className="flex-1 gap-2"
+                            onClick={() => handleAcceptTask(task.id)}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                            Starten
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="flex-1 gap-2" 
+                            disabled
+                          >
+                            Einstempeln zum Starten
+                          </Button>
+                        )
+                      ) : task.assignment?.accepted_at && task.status !== 'completed' ? (
+                        <Button 
+                          className="flex-1 gap-2"
+                          onClick={() => {
+                            setDialogViewMode('workflow');
+                            setSelectedTask(task);
+                          }}
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                          Fortsetzen
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
