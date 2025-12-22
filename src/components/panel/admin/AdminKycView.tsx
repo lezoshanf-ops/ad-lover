@@ -217,13 +217,15 @@ export default function AdminKycView() {
     fetchDocuments();
   };
 
-  // Filter documents based on status and type
+  // Filter documents based on status and type - KYC tab shows only ID cards and passports
   const pendingDocuments = documents.filter(d => d.status === 'pending');
   const approvedDocuments = documents.filter(d => d.status === 'approved');
   const rejectedDocuments = documents.filter(d => d.status === 'rejected');
+  // KYC documents are ONLY ID cards and passports (for identity verification)
   const kycDocuments = documents.filter(d => 
-    ['id_card', 'passport', 'certificate', 'contract'].includes(d.document_type || '')
+    ['id_card', 'passport'].includes(d.document_type || '')
   );
+  const pendingKycDocuments = kycDocuments.filter(d => d.status === 'pending');
 
   const filterBySearch = (docs: KycDocument[]) => {
     if (!searchQuery) return docs;
@@ -449,9 +451,14 @@ export default function AdminKycView() {
             <XCircle className="h-4 w-4" />
             Abgelehnt
           </TabsTrigger>
-          <TabsTrigger value="kyc" className="gap-2">
+          <TabsTrigger value="kyc" className="gap-2 relative">
             <FileCheck className="h-4 w-4" />
-            KYC
+            KYC (Ausweis)
+            {pendingKycDocuments.length > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-amber-500/20 text-amber-700 dark:text-amber-400 animate-pulse">
+                {pendingKycDocuments.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 

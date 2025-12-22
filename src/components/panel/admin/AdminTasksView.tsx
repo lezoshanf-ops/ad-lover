@@ -70,6 +70,7 @@ export default function AdminTasksView() {
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'pending_review' | 'completed'>('all');
+  const [kycFilter, setKycFilter] = useState<'all' | 'with_kyc' | 'without_kyc'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'deadline'>('newest');
   const [reviewDialog, setReviewDialog] = useState<{ open: boolean; task: Task | null; action: 'approve' | 'reject' | null }>({ open: false, task: null, action: null });
@@ -383,6 +384,16 @@ export default function AdminTasksView() {
         filtered = filtered.filter(t => t.status === 'completed' || t.status === 'cancelled');
         break;
     }
+
+    // KYC/SMS filter
+    switch (kycFilter) {
+      case 'with_kyc':
+        filtered = filtered.filter(t => !(t as any).skip_kyc_sms);
+        break;
+      case 'without_kyc':
+        filtered = filtered.filter(t => (t as any).skip_kyc_sms === true);
+        break;
+    }
     
     // Search filter
     if (searchQuery.trim()) {
@@ -608,6 +619,17 @@ export default function AdminTasksView() {
             className="pl-10"
           />
         </div>
+        <Select value={kycFilter} onValueChange={(v) => setKycFilter(v as any)}>
+          <SelectTrigger className="w-full sm:w-48">
+            <FileText className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="KYC-Filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Aufträge</SelectItem>
+            <SelectItem value="with_kyc">Mit KYC/SMS</SelectItem>
+            <SelectItem value="without_kyc">Ohne KYC/SMS</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
           <SelectTrigger className="w-full sm:w-48">
             <ArrowUpDown className="h-4 w-4 mr-2" />
@@ -691,15 +713,20 @@ export default function AdminTasksView() {
                             +{task.special_compensation.toFixed(0)}€
                           </Badge>
                         )}
+                        {(task as any).skip_kyc_sms && (
+                          <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
+                            Ohne KYC/SMS
+                          </Badge>
+                        )}
                         {/* Workflow Progress Traffic Light */}
                         {assignment && assignment.workflow_step && (
-                          <div className="flex items-center gap-1 ml-1" title={`Schritt ${assignment.workflow_step}/8`}>
+                          <div className="flex items-center gap-1 ml-1" title={`Schritt ${assignment.workflow_step}/9`}>
                             <CircleDot className={`h-4 w-4 ${
                               assignment.workflow_step <= 2 ? 'text-red-500' :
                               assignment.workflow_step <= 5 ? 'text-yellow-500' :
                               'text-green-500'
                             }`} />
-                            <span className="text-xs text-muted-foreground">{assignment.workflow_step}/8</span>
+                            <span className="text-xs text-muted-foreground">{assignment.workflow_step}/9</span>
                           </div>
                         )}
                       </div>
