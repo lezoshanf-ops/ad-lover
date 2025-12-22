@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -14,7 +15,10 @@ import {
   ArrowRight,
   FileText,
   Play,
-  User
+  User,
+  AlertTriangle,
+  XCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, differenceInHours, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
@@ -38,6 +42,12 @@ interface ActiveTask {
   priority: string;
 }
 
+interface KycStatus {
+  pendingCount: number;
+  rejectedCount: number;
+  rejectedDocs: { fileName: string; reviewNotes: string | null }[];
+}
+
 interface EmployeeDashboardViewProps {
   onNavigate: (tab: string) => void;
 }
@@ -54,6 +64,7 @@ export default function EmployeeDashboardView({ onNavigate }: EmployeeDashboardV
     isCheckedIn: false,
   });
   const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
+  const [kycStatus, setKycStatus] = useState<KycStatus>({ pendingCount: 0, rejectedCount: 0, rejectedDocs: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -151,6 +162,25 @@ export default function EmployeeDashboardView({ onNavigate }: EmployeeDashboardV
       });
 
       setActiveTasks(activeTasksList);
+
+      // Fetch KYC document status
+      const { data: kycDocs } = await supabase
+        .from('documents')
+        .select('id, file_name, status, review_notes, document_type')
+        .eq('user_id', user.id)
+        .in('document_type', ['id_card', 'passport']);
+
+      const pendingDocs = kycDocs?.filter(d => d.status === 'pending') || [];
+      const rejectedDocs = kycDocs?.filter(d => d.status === 'rejected') || [];
+
+      setKycStatus({
+        pendingCount: pendingDocs.length,
+        rejectedCount: rejectedDocs.length,
+        rejectedDocs: rejectedDocs.map(d => ({
+          fileName: d.file_name,
+          reviewNotes: d.review_notes
+        }))
+      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -214,6 +244,50 @@ export default function EmployeeDashboardView({ onNavigate }: EmployeeDashboardV
           </span>
         </div>
       </div>
+
+      {/* KYC Status Alerts */}
+      {kycStatus.rejectedCount > 0 && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle className="flex items-center gap-2">
+            KYC-Dokumente abgelehnt
+            <Badge variant="destructive" className="ml-2">{kycStatus.rejectedCount}</Badge>
+          </AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="mb-2">Folgende Dokumente wurden abgelehnt und müssen erneut hochgeladen werden:</p>
+            <ul className="list-disc list-inside space-y-1">
+              {kycStatus.rejectedDocs.map((doc, index) => (
+                <li key={index} className="text-sm">
+                  <span className="font-medium">{doc.fileName}</span>
+                  {doc.reviewNotes && <span className="text-muted-foreground"> – {doc.reviewNotes}</span>}
+                </li>
+              ))}
+            </ul>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-3"
+              onClick={() => onNavigate('documents')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Dokumente erneut hochladen
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {kycStatus.pendingCount > 0 && kycStatus.rejectedCount === 0 && (
+        <Alert className="border-orange-500/50 bg-orange-500/10">
+          <ShieldAlert className="h-4 w-4 text-orange-500" />
+          <AlertTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+            KYC-Prüfung ausstehend
+            <Badge variant="outline" className="ml-2 border-orange-500 text-orange-600">{kycStatus.pendingCount}</Badge>
+          </AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Deine Ausweisdokumente werden derzeit geprüft. Dies kann einige Zeit dauern.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
