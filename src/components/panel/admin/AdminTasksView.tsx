@@ -279,6 +279,31 @@ export default function AdminTasksView() {
     }
   };
 
+  const handleRevokeAssignment = async (taskId: string) => {
+    // Delete the assignment and reset task status to pending
+    const { error: assignmentError } = await supabase
+      .from('task_assignments')
+      .delete()
+      .eq('task_id', taskId);
+    
+    if (assignmentError) {
+      toast({ title: 'Fehler', description: 'Zuweisung konnte nicht entfernt werden.', variant: 'destructive' });
+      return;
+    }
+
+    const { error: taskError } = await supabase
+      .from('tasks')
+      .update({ status: 'pending' })
+      .eq('id', taskId);
+    
+    if (taskError) {
+      toast({ title: 'Fehler', description: 'Status konnte nicht zurückgesetzt werden.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Erfolg', description: 'Auftrag wurde entzogen und steht wieder zur Zuweisung bereit.' });
+      fetchTasks();
+    }
+  };
+
   const handleApproveTask = async () => {
     if (!reviewDialog.task) return;
     
@@ -700,6 +725,34 @@ export default function AdminTasksView() {
                         >
                           Zuweisen
                         </Button>
+                      )}
+                      {/* Revoke assignment button - only show when task is assigned */}
+                      {assignee && (task.status === 'assigned' || task.status === 'in_progress' || task.status === 'sms_requested') && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700">
+                              <XCircle className="h-3.5 w-3.5" />
+                              Entziehen
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Auftrag entziehen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Der Auftrag "{task.title}" wird {assignee.first_name} {assignee.last_name} entzogen und steht wieder zur Zuweisung bereit.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleRevokeAssignment(task.id)}
+                                className="bg-amber-600 text-white hover:bg-amber-700"
+                              >
+                                Entziehen
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

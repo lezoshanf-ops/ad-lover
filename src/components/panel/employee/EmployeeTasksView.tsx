@@ -159,6 +159,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const smsPollingIntervalId = useRef<number | null>(null);
   const smsCountdownIntervalId = useRef<number | null>(null);
   const previousSmsCodesRef = useRef<Record<string, string | null>>({});
+  const workflowContentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (permission === 'default') {
@@ -727,6 +728,14 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     await updateWorkflow(task.id, { workflow_step: nextStep, ...extra });
+    
+    // Auto-scroll to the new step after a short delay
+    setTimeout(() => {
+      const stepElement = document.getElementById(`workflow-step-${nextStep}`);
+      if (stepElement) {
+        stepElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   };
 
   const handleGoBackStep = async (task: TaskWithDetails) => {
@@ -762,6 +771,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     if (step === 3) {
+      // Open VideoChatDialog to decide on digital flow
       setVideoChatDialog({ open: true, task });
       return;
     }
@@ -1301,19 +1311,24 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                       </div>
 
                       {/* Workflow steps with images */}
-                      <div className="space-y-4">
+                      <div className="space-y-4" ref={workflowContentRef}>
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-5 w-5 text-primary" />
                           <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
                         </div>
                         <div className="space-y-3">
                           {steps.map((step) => (
-                            <WorkflowStepCard
+                            <div
                               key={step.number}
-                              step={step}
-                              currentStep={currentStep}
-                              isExpanded={step.number === currentStep}
-                            />
+                              id={`workflow-step-${step.number}`}
+                              className="scroll-mt-4"
+                            >
+                              <WorkflowStepCard
+                                step={step}
+                                currentStep={currentStep}
+                                isExpanded={step.number === currentStep}
+                              />
+                            </div>
                           ))}
                         </div>
                       </div>
