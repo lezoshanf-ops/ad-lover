@@ -668,10 +668,21 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const handleSaveStepNote = async (taskId: string, stepNumber: number) => {
     if (!user) return;
     
-    setSavingStepNote(`${taskId}-${stepNumber}`);
-    
     const currentStepNotes = stepNotes[taskId] || {};
     const noteForStep = currentStepNotes[stepNumber.toString()] || '';
+    
+    // Validate minimum word count (at least 3 words)
+    const wordCount = noteForStep.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount < 3) {
+      toast({
+        title: 'Zu kurz',
+        description: 'Bitte schreibe mindestens 3 Wörter in deine Notiz.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setSavingStepNote(`${taskId}-${stepNumber}`);
     
     // Get existing step_notes from database
     const { data: assignment } = await supabase
@@ -734,7 +745,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
 
   const getWorkflowStep = (task: TaskWithDetails) => {
     const step = (task.assignment as any)?.workflow_step;
-    return typeof step === 'number' && step >= 1 && step <= 8 ? step : 1;
+    return typeof step === 'number' && step >= 1 && step <= TOTAL_WORKFLOW_STEPS ? step : 1;
   };
 
   const updateWorkflow = async (
@@ -784,7 +795,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     const current = getWorkflowStep(task);
 
     // Allow going back or forward by 1
-    if (nextStep < 1 || nextStep > 8) {
+    if (nextStep < 1 || nextStep > TOTAL_WORKFLOW_STEPS) {
       return;
     }
 
@@ -792,7 +803,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     if (nextStep > current && nextStep !== current + 1) {
       toast({
         title: 'Reihenfolge beachten',
-        description: 'Bitte bearbeite die Schritte strikt der Reihe nach (1 bis 8).',
+        description: `Bitte bearbeite die Schritte strikt der Reihe nach (1 bis ${TOTAL_WORKFLOW_STEPS}).`,
         variant: 'destructive',
       });
       return;
@@ -848,13 +859,24 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     if (step === 4) {
-      // Step 4: Just proceed to step 5 - SMS request happens there
+      // Step 4: KYC - Redirect to documents for ID upload
+      handleGoToDocuments(task.id);
+      toast({
+        title: 'KYC-Dokumente',
+        description: 'Bitte lade deine Ausweisdokumente (Vorder- und Rückseite) hoch.',
+      });
       await setWorkflowStep(task, 5);
       return;
     }
 
     if (step === 5) {
-      // Only proceed to step 6 when user explicitly confirms video chat is done
+      // Step 5: Demo-Daten - Just proceed to step 6
+      await setWorkflowStep(task, 6);
+      return;
+    }
+
+    if (step === 6) {
+      // Only proceed to step 7 when user explicitly confirms video chat is done
       if (!videoChatConfirmed) {
         toast({
           title: 'Bestätigung erforderlich',
@@ -863,13 +885,13 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
         });
         return;
       }
-      await setWorkflowStep(task, 6);
+      await setWorkflowStep(task, 7);
       setVideoChatConfirmed(false);
       return;
     }
 
-    if (step === 6) {
-      await setWorkflowStep(task, 7);
+    if (step === 7) {
+      await setWorkflowStep(task, 8);
       return;
     }
 
@@ -888,7 +910,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       return;
     }
 
-    if (step === 8) {
+    if (step === 9) {
       if ((taskDocuments[task.id] || 0) <= 0) {
         toast({
           title: 'Nachweis fehlt',
@@ -910,6 +932,9 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   );
 
   // Task workflow steps based on images
+  // Total workflow steps constant
+  const TOTAL_WORKFLOW_STEPS = 9;
+
   const getTaskSteps = (task: TaskWithDetails) => [
     {
       number: 1,
@@ -928,26 +953,31 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     },
     {
       number: 4,
+      title: 'KYC-Prüfung (Ausweis)',
+      description: 'Lade ein Foto der Vorder- und Rückseite deines Ausweises hoch. Achte darauf, dass alle Daten gut lesbar sind. Die Dokumente werden vom Admin geprüft und freigegeben.'
+    },
+    {
+      number: 5,
       title: 'Demo-Daten erhalten',
       description: 'Nach deiner Zustimmung erscheinen die Demo-Daten nach kurzer Zeit in deinem System. Wenn du sie werktags zwischen 9:00 und 18:00 Uhr beantragst, stehen sie dir in der Regel innerhalb von 30 Minuten zur Verfügung.'
     },
     {
-      number: 5,
+      number: 6,
       title: 'Videochat durchführen',
       description: 'Mit den erhaltenen Demo-Daten startest du den digitalen Ablauf auf der Webseite. Der Videochat ist kurz, dauert nur etwa fünf Minuten und kann bequem per Laptop oder Smartphone durchgeführt werden.'
     },
     {
-      number: 6,
+      number: 7,
       title: 'Unterlagen abwarten',
       description: 'Nach erfolgreichem Abschluss des Ablaufs erhältst du automatisch postalisch neutrale Unterlagen. Diese Unterlagen sind rein simuliert und haben keine rechtliche Relevanz.'
     },
     {
-      number: 7,
+      number: 8,
       title: 'Nachweis hochladen',
       description: 'Fotografiere oder scanne die erhaltenen Unterlagen und lade sie im Auftragssystem hoch. Achte darauf, dass die Dateien gut lesbar sind. Erst nach dem erfolgreichen Upload gilt der Auftrag als vollständig erledigt.'
     },
     {
-      number: 8,
+      number: 9,
       title: 'Auftrag abschließen',
       description: 'Sobald die Unterlagen hochgeladen wurden, kannst du den Auftrag als abgeschlossen markieren. Erst dann wird dir die vereinbarte Arbeitszeit gutgeschrieben.'
     }
@@ -1093,11 +1123,11 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-medium text-muted-foreground">Fortschritt</span>
                         <span className="text-xs font-semibold text-primary">
-                          Schritt {(task.assignment as any)?.workflow_step || 1} / 8
+                          Schritt {(task.assignment as any)?.workflow_step || 1} / {TOTAL_WORKFLOW_STEPS}
                         </span>
                       </div>
                       <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
+                        {Array.from({ length: TOTAL_WORKFLOW_STEPS }, (_, i) => i + 1).map((step) => {
                           const currentStep = (task.assignment as any)?.workflow_step || 1;
                           const isDone = step < currentStep;
                           const isActive = step === currentStep;
