@@ -178,6 +178,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const [videoChatConfirmed, setVideoChatConfirmed] = useState(false);
   const [smsCountdown, setSmsCountdown] = useState(30);
   const [showSmsReceivedAnimation, setShowSmsReceivedAnimation] = useState<string | null>(null);
+  const [requestingSmsId, setRequestingSmsId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const tabContext = useTabContext();
@@ -583,6 +584,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   };
 
   const handleRequestSms = async (taskId: string) => {
+    setRequestingSmsId(taskId);
+    
     const { error } = await supabase.from('sms_code_requests').insert({
       task_id: taskId,
       user_id: user?.id
@@ -595,6 +598,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       toast({ title: 'Erfolg', description: 'SMS-Code wurde angefordert.' });
       fetchTasks();
     }
+    
+    setRequestingSmsId(null);
   };
 
   const handleResendSmsCode = async (taskId: string, _existingRequestId: string) => {
@@ -842,53 +847,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
     if (step === 4) {
-      // Step 4: Open external WebID page first, then request SMS code
-      if (task.web_ident_url) {
-        // Open external page in new tab
-        window.open(task.web_ident_url, '_blank', 'noopener,noreferrer');
-        
-        // Now request SMS code if not already requested
-        if (!task.smsRequest) {
-          await handleRequestSms(task.id);
-          toast({
-            title: 'Externe Seite geöffnet & Demo-Daten angefordert',
-            description: 'Die WebID-Seite wurde geöffnet. Warte auf den SMS-Code vom Admin.',
-          });
-          return;
-        }
-        
-        // SMS already requested, check if code received
-        if (task.smsRequest.sms_code) {
-          await setWorkflowStep(task, 5);
-          return;
-        }
-        
-        toast({
-          title: 'Warte auf SMS-Code',
-          description: 'Die externe Seite ist geöffnet. Der Admin hat die Anfrage erhalten.',
-        });
-        return;
-      }
-      
-      // No WebID URL - just proceed with SMS request
-      if (task.smsRequest?.sms_code) {
-        await setWorkflowStep(task, 5);
-        return;
-      }
-
-      if (!task.smsRequest) {
-        await handleRequestSms(task.id);
-        toast({
-          title: 'Demo-Daten angefordert',
-          description: 'Bitte warte auf den SMS-Code vom Admin.',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Warte auf SMS-Code',
-        description: 'Der Admin hat die Anfrage erhalten. Bitte warte auf den Code.',
-      });
+      // Step 4: Just proceed to step 5 - SMS request happens there
+      await setWorkflowStep(task, 5);
       return;
     }
 
@@ -1513,245 +1473,280 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       </div>
 
-                      {/* Task credentials if any - only visible from step 4 onwards */}
+                      {/* Task credentials if any - only visible from step 4 onwards with copy function */}
                       {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 4 && (
                         <div className="p-4 bg-info/10 rounded-lg border border-info/20">
                           <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
-                            Test-Zugangsdaten
+                            Test-Zugangsdaten – Für externe Seite kopieren
                           </p>
-                          <div className="grid sm:grid-cols-2 gap-3">
+                          <div className="space-y-3">
                             {selectedTask.test_email && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Mail className="h-4 w-4 text-info" />
-                                <span className="font-mono">{selectedTask.test_email}</span>
+                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border">
+                                <div className="flex items-center gap-2 text-sm min-w-0">
+                                  <Mail className="h-4 w-4 text-info shrink-0" />
+                                  <span className="font-mono truncate">{selectedTask.test_email}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 text-info hover:bg-info/10 shrink-0"
+                                  onClick={() => handleCopySmsCode(selectedTask.test_email!)}
+                                >
+                                  {copiedCode === selectedTask.test_email ? (
+                                    <>
+                                      <Check className="h-3 w-3" />
+                                      Kopiert
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3 w-3" />
+                                      Kopieren
+                                    </>
+                                  )}
+                                </Button>
                               </div>
                             )}
                             {selectedTask.test_password && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Key className="h-4 w-4 text-info" />
-                                <span className="font-mono">{selectedTask.test_password}</span>
+                              <div className="flex items-center justify-between gap-3 p-3 bg-background/60 rounded-lg border">
+                                <div className="flex items-center gap-2 text-sm min-w-0">
+                                  <Key className="h-4 w-4 text-info shrink-0" />
+                                  <span className="font-mono truncate">{selectedTask.test_password}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 text-info hover:bg-info/10 shrink-0"
+                                  onClick={() => handleCopySmsCode(selectedTask.test_password!)}
+                                >
+                                  {copiedCode === selectedTask.test_password ? (
+                                    <>
+                                      <Check className="h-3 w-3" />
+                                      Kopiert
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3 w-3" />
+                                      Kopieren
+                                    </>
+                                  )}
+                                </Button>
                               </div>
                             )}
                           </div>
                         </div>
                       )}
                       
-                      {/* SMS Code display / Waiting indicator for Step 4 */}
+                      {/* Step 4 Info - No SMS here anymore */}
                       {currentStep === 4 && (
-                        <div className="p-4 rounded-lg border bg-gradient-to-r from-primary/5 to-transparent relative overflow-hidden">
-                          {/* SMS Received Animation Overlay */}
-                          {showSmsReceivedAnimation === selectedTask.id && (
-                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-r from-emerald-500/20 to-green-500/20 animate-fade-in">
-                              <div className="flex flex-col items-center gap-3 animate-scale-in">
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/30">
-                                  <CheckCircle2 className="h-10 w-10 text-white" />
-                                </div>
-                                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">SMS-Code erhalten!</p>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {selectedTask.smsRequest?.sms_code ? (
-                            <SmsCodeDisplay
-                              smsCode={selectedTask.smsRequest.sms_code}
-                              onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
-                              isResending={resendingCode === selectedTask.id}
-                            />
-                          ) : selectedTask.smsRequest ? (
-                            <div className="flex flex-col items-center justify-center py-6 text-center">
-                              <div className="relative">
-                                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                                </div>
-                                <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/30 animate-ping" />
-                              </div>
-                              <p className="font-semibold text-lg mb-1">Warte auf SMS-Code</p>
-                              <p className="text-sm text-muted-foreground max-w-xs">
-                                Der Admin wurde benachrichtigt. Dein SMS-Code wird in Kürze bereitgestellt.
-                              </p>
-                              
-                              {/* Request timestamp with relative time */}
-                              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  Angefragt um {format(new Date(selectedTask.smsRequest.requested_at), 'HH:mm', { locale: de })} Uhr
-                                </div>
-                                <div className="px-3 py-1.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
-                                  vor {formatDistanceStrict(new Date(selectedTask.smsRequest.requested_at), new Date(), { locale: de, addSuffix: false })}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                <span>Werktags 9-18 Uhr: ca. 30 Minuten</span>
-                              </div>
-                              
-                              {/* Countdown Timer & Refresh */}
-                              <div className="mt-4 p-3 bg-muted/50 rounded-lg border w-full max-w-xs">
-                                <div className="flex items-center justify-center gap-2">
-                                  <RefreshCcw className="h-4 w-4 text-primary" />
-                                  <span className="text-sm font-medium">
-                                    Nächste Aktualisierung in{' '}
-                                    <span className="font-mono text-primary font-bold">{smsCountdown}s</span>
-                                  </span>
-                                </div>
-                                <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-1000 ease-linear"
-                                    style={{ width: `${(smsCountdown / 30) * 100}%` }}
-                                  />
-                                </div>
-                                
-                                {/* Manual refresh button */}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full mt-3 gap-2"
-                                  disabled={isRefreshing}
-                                  onClick={async () => {
-                                    setIsRefreshing(true);
-                                    await fetchTasks();
-                                    setSmsCountdown(30);
-                                    setTimeout(() => setIsRefreshing(false), 500);
-                                  }}
-                                >
-                                  <RefreshCcw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-                                  {isRefreshing ? 'Prüfe...' : 'Jetzt prüfen'}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-4 text-center">
-                              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                                <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                              <p className="font-medium mb-1">Demo-Daten anfordern</p>
+                        <div className="p-4 rounded-lg border bg-muted/30">
+                          <div className="flex items-start gap-3">
+                            <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium mb-1">Nächster Schritt: Videochat</p>
                               <p className="text-sm text-muted-foreground">
-                                Klicke unten auf "Demo-Daten anfordern", um den SMS-Code zu erhalten.
+                                Fahre mit dem nächsten Schritt fort, um den Videochat zu starten und dort deinen SMS-Code anzufordern.
                               </p>
                             </div>
-                          )}
+                          </div>
                         </div>
                       )}
 
-                      {/* SMS Code display for other steps when available */}
-                      {currentStep !== 4 && selectedTask.smsRequest?.sms_code && (
-                        <SmsCodeDisplay
-                          smsCode={selectedTask.smsRequest.sms_code}
-                          onResendCode={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
-                          isResending={resendingCode === selectedTask.id}
-                        />
-                      )}
-
-                      {/* Step 5: Videochat Tab - Elegant Visual with External Link */}
+                      {/* Step 5: Videochat Tab - Elegant Visual with External Link & SMS Request */}
                       {currentStep === 5 && (
                         <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-violet-500/5">
                           {/* Hero Banner with Visual */}
-                          <div className="relative h-48 bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
+                          <div className="relative h-40 bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
                             {/* Animated Background Elements */}
                             <div className="absolute inset-0">
-                              <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-white/10 blur-xl animate-pulse" />
-                              <div className="absolute bottom-4 right-4 w-32 h-32 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
+                              <div className="absolute top-4 left-4 w-16 h-16 rounded-full bg-white/10 blur-xl animate-pulse" />
+                              <div className="absolute bottom-4 right-4 w-24 h-24 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
                             </div>
                             
                             {/* Main Icon */}
-                            <div className="relative z-10 flex flex-col items-center gap-4">
-                              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
-                                <Video className="h-10 w-10 text-white" />
+                            <div className="relative z-10 flex flex-col items-center gap-3">
+                              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
+                                <Video className="h-8 w-8 text-white" />
                               </div>
                               <div className="text-center">
-                                <h3 className="text-xl font-bold text-white">Video-Verifizierung</h3>
-                                <p className="text-sm text-white/80">Öffne die externe Seite für den Videochat</p>
+                                <h3 className="text-lg font-bold text-white">Video-Verifizierung</h3>
+                                <p className="text-xs text-white/80">Öffne die externe Seite für den Videochat</p>
                               </div>
                             </div>
                           </div>
                           
                           {/* Content Area */}
-                          <div className="p-6 space-y-5">
-                            {/* SMS Code Display - Prominent */}
-                            {selectedTask.smsRequest?.sms_code ? (
-                              <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
-                                <div className="flex items-center justify-between flex-wrap gap-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                                      <MessageSquare className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                      <p className="text-xs font-medium text-primary/70 uppercase tracking-wide">SMS-Code für Verifizierung</p>
-                                      <p className="text-3xl font-mono font-bold text-primary tracking-[0.4em]">
-                                        {selectedTask.smsRequest.sms_code}
-                                      </p>
-                                    </div>
+                          <div className="p-5 space-y-4">
+                            {/* SMS Animation Overlay */}
+                            {showSmsReceivedAnimation === selectedTask.id && (
+                              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 animate-fade-in">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/30">
+                                    <CheckCircle2 className="h-6 w-6 text-white" />
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div>
+                                    <p className="font-bold text-emerald-600 dark:text-emerald-400">SMS-Code erhalten!</p>
+                                    <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80">Du kannst jetzt fortfahren</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* SMS Code Display - Elegant Card */}
+                            {selectedTask.smsRequest?.sms_code ? (
+                              <div className="p-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                                    <MessageSquare className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <p className="text-xs font-semibold text-primary uppercase tracking-wide">SMS-Code für Verifizierung</p>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                  <div className="flex items-center gap-3 p-3 bg-background/80 rounded-lg border min-w-0">
+                                    <p className="text-2xl sm:text-3xl font-mono font-bold text-primary tracking-[0.3em]">
+                                      {selectedTask.smsRequest.sms_code}
+                                    </p>
                                     <Button
-                                      variant="outline"
+                                      variant="ghost"
                                       size="sm"
-                                      className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                      className="gap-1.5 text-primary hover:bg-primary/10 shrink-0"
                                       onClick={() => handleCopySmsCode(selectedTask.smsRequest!.sms_code!)}
                                     >
                                       {copiedCode === selectedTask.smsRequest.sms_code ? (
                                         <>
-                                          <Check className="h-3 w-3" />
+                                          <Check className="h-4 w-4" />
                                           Kopiert
                                         </>
                                       ) : (
                                         <>
-                                          <Copy className="h-3 w-3" />
+                                          <Copy className="h-4 w-4" />
                                           Kopieren
                                         </>
                                       )}
                                     </Button>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                    disabled={resendingCode === selectedTask.id}
+                                    onClick={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                                  >
+                                    <RefreshCw className={cn("h-3 w-3", resendingCode === selectedTask.id && "animate-spin")} />
+                                    Neuer Code
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : selectedTask.smsRequest ? (
+                              /* Waiting for SMS Code - Elegant Loading State */
+                              <div className="p-5 rounded-xl border bg-gradient-to-br from-muted/50 to-muted/20">
+                                <div className="flex flex-col items-center text-center">
+                                  <div className="relative mb-4">
+                                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <Loader2 className="h-7 w-7 text-primary animate-spin" />
+                                    </div>
+                                    <div className="absolute inset-0 w-14 h-14 rounded-full border-2 border-primary/20 animate-ping" />
+                                  </div>
+                                  <p className="font-semibold mb-1">Warte auf SMS-Code</p>
+                                  <p className="text-sm text-muted-foreground max-w-xs mb-3">
+                                    Der Admin wurde benachrichtigt und wird den Code bereitstellen.
+                                  </p>
+                                  
+                                  <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+                                      <Clock className="h-3 w-3" />
+                                      {format(new Date(selectedTask.smsRequest.requested_at), 'HH:mm', { locale: de })} Uhr
+                                    </div>
+                                    <div className="px-2.5 py-1 bg-primary/10 rounded-full text-xs font-medium text-primary">
+                                      vor {formatDistanceStrict(new Date(selectedTask.smsRequest.requested_at), new Date(), { locale: de, addSuffix: false })}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="w-full max-w-xs">
+                                    <div className="flex items-center justify-center gap-2 text-sm mb-2">
+                                      <span className="font-mono text-primary font-bold">{smsCountdown}s</span>
+                                      <span className="text-muted-foreground">bis zur Aktualisierung</span>
+                                    </div>
+                                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-1000"
+                                        style={{ width: `${(smsCountdown / 30) * 100}%` }}
+                                      />
+                                    </div>
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-                                      disabled={resendingCode === selectedTask.id}
-                                      onClick={() => handleResendSmsCode(selectedTask.id, selectedTask.smsRequest!.id)}
+                                      className="w-full mt-3 gap-2"
+                                      disabled={isRefreshing}
+                                      onClick={async () => {
+                                        setIsRefreshing(true);
+                                        await fetchTasks();
+                                        setSmsCountdown(30);
+                                        setTimeout(() => setIsRefreshing(false), 500);
+                                      }}
                                     >
-                                      <RefreshCw className={cn("h-3 w-3", resendingCode === selectedTask.id && "animate-spin")} />
-                                      Neuer Code
+                                      <RefreshCcw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                                      {isRefreshing ? 'Prüfe...' : 'Jetzt prüfen'}
                                     </Button>
                                   </div>
                                 </div>
                               </div>
-                            ) : selectedTask.smsRequest ? (
-                              <div className="p-4 bg-muted/50 rounded-xl border animate-pulse">
-                                <div className="flex items-center gap-3">
-                                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                                  <span className="text-sm font-medium">Warte auf SMS-Code vom Admin...</span>
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {/* Important Notice */}
-                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
-                              <div className="flex items-start gap-3">
-                                <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                                <div>
-                                  <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">Externe Seite erforderlich</p>
-                                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                                    Die Videochat-Plattform kann aus Sicherheitsgründen nicht eingebettet werden. 
-                                    Klicke auf "Extern öffnen", um den Videochat in einem neuen Tab zu starten.
+                            ) : (
+                              /* Request SMS Button - No SMS yet */
+                              <div className="p-4 rounded-xl border bg-muted/30">
+                                <div className="flex flex-col items-center text-center">
+                                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                                    <MessageSquare className="h-6 w-6 text-primary" />
+                                  </div>
+                                  <p className="font-medium mb-1">SMS-Code erforderlich</p>
+                                  <p className="text-sm text-muted-foreground mb-4">
+                                    Für den Videochat benötigst du einen SMS-Code vom Admin.
                                   </p>
+                                  <Button
+                                    className="gap-2 bg-gradient-to-r from-primary to-primary/80"
+                                    disabled={requestingSmsId === selectedTask.id}
+                                    onClick={() => handleRequestSms(selectedTask.id)}
+                                  >
+                                    {requestingSmsId === selectedTask.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Wird angefordert...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Phone className="h-4 w-4" />
+                                        SMS-Code anfordern
+                                      </>
+                                    )}
+                                  </Button>
                                 </div>
                               </div>
-                            </div>
+                            )}
 
-                            {/* Primary Action - Extern Öffnen */}
+                            {/* External Link Section */}
                             {selectedTask.web_ident_url && (
-                              <Button
-                                size="lg"
-                                className="w-full gap-3 h-14 text-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  window.open(selectedTask.web_ident_url!, '_blank', 'noopener,noreferrer');
-                                }}
-                              >
-                                <ExternalLink className="h-5 w-5" />
-                                Extern öffnen
-                              </Button>
+                              <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800/30 rounded-xl">
+                                <div className="flex items-start gap-3 mb-3">
+                                  <ExternalLink className="h-5 w-5 text-cyan-600 dark:text-cyan-400 mt-0.5 shrink-0" />
+                                  <div>
+                                    <p className="font-medium text-cyan-800 dark:text-cyan-300 mb-1">Externe Seite</p>
+                                    <p className="text-sm text-cyan-700 dark:text-cyan-400">
+                                      Öffne die Plattform in einem neuen Tab. Du bleibst hier eingeloggt.
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="lg"
+                                  className="w-full gap-3 h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open(selectedTask.web_ident_url!, '_blank', 'noopener,noreferrer');
+                                  }}
+                                >
+                                  <ExternalLink className="h-5 w-5" />
+                                  Extern öffnen
+                                </Button>
+                              </div>
                             )}
 
                             {/* Confirmation Section */}
@@ -1764,7 +1759,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                   className="mt-0.5"
                                 />
                                 <label htmlFor="videochat-confirm-step5" className="text-sm cursor-pointer leading-relaxed">
-                                  Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe und die Verifizierung durchgeführt wurde.
+                                  Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe.
                                 </label>
                               </div>
                             </div>
