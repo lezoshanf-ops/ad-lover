@@ -5,11 +5,14 @@ import { CheckCircle2, Circle, Sparkles } from 'lucide-react';
 import step1Image from '@/assets/workflow/step-1-website.jpg';
 import step2Image from '@/assets/workflow/step-2-rating.jpg';
 import step3Image from '@/assets/workflow/step-3-decision.jpg';
-import step4Image from '@/assets/workflow/step-4-data.jpg';
-import step5Image from '@/assets/workflow/step-5-videochat.jpg';
-import step6Image from '@/assets/workflow/step-6-documents.jpg';
-import step7Image from '@/assets/workflow/step-7-upload.jpg';
-import step8Image from '@/assets/workflow/step-8-complete.jpg';
+import step4Image from '@/assets/workflow/step-4-kyc.jpg';
+import step5Image from '@/assets/workflow/step-4-data.jpg';
+import step6Image from '@/assets/workflow/step-5-videochat.jpg';
+import step7Image from '@/assets/workflow/step-6-documents.jpg';
+import step8Image from '@/assets/workflow/step-7-upload.jpg';
+import step9Image from '@/assets/workflow/step-8-complete.jpg';
+
+const TOTAL_STEPS = 9;
 
 const stepImages: Record<number, string> = {
   1: step1Image,
@@ -20,28 +23,31 @@ const stepImages: Record<number, string> = {
   6: step6Image,
   7: step7Image,
   8: step8Image,
+  9: step9Image,
 };
 
 const stepColors: Record<number, { bg: string; accent: string; glow: string }> = {
   1: { bg: 'from-blue-500/10 to-blue-600/5', accent: 'text-blue-500', glow: 'shadow-blue-500/20' },
   2: { bg: 'from-purple-500/10 to-purple-600/5', accent: 'text-purple-500', glow: 'shadow-purple-500/20' },
   3: { bg: 'from-emerald-500/10 to-emerald-600/5', accent: 'text-emerald-500', glow: 'shadow-emerald-500/20' },
-  4: { bg: 'from-orange-500/10 to-orange-600/5', accent: 'text-orange-500', glow: 'shadow-orange-500/20' },
-  5: { bg: 'from-cyan-500/10 to-cyan-600/5', accent: 'text-cyan-500', glow: 'shadow-cyan-500/20' },
-  6: { bg: 'from-teal-500/10 to-teal-600/5', accent: 'text-teal-500', glow: 'shadow-teal-500/20' },
-  7: { bg: 'from-indigo-500/10 to-indigo-600/5', accent: 'text-indigo-500', glow: 'shadow-indigo-500/20' },
-  8: { bg: 'from-green-500/10 to-green-600/5', accent: 'text-green-500', glow: 'shadow-green-500/20' },
+  4: { bg: 'from-amber-500/10 to-amber-600/5', accent: 'text-amber-500', glow: 'shadow-amber-500/20' },
+  5: { bg: 'from-orange-500/10 to-orange-600/5', accent: 'text-orange-500', glow: 'shadow-orange-500/20' },
+  6: { bg: 'from-cyan-500/10 to-cyan-600/5', accent: 'text-cyan-500', glow: 'shadow-cyan-500/20' },
+  7: { bg: 'from-teal-500/10 to-teal-600/5', accent: 'text-teal-500', glow: 'shadow-teal-500/20' },
+  8: { bg: 'from-indigo-500/10 to-indigo-600/5', accent: 'text-indigo-500', glow: 'shadow-indigo-500/20' },
+  9: { bg: 'from-green-500/10 to-green-600/5', accent: 'text-green-500', glow: 'shadow-green-500/20' },
 };
 
 const motivationalMessages: Record<number, string> = {
   1: 'Los geht\'s! Nimm dir Zeit für eine gründliche Analyse.',
   2: 'Deine Meinung zählt! Teile deine ehrliche Einschätzung.',
   3: 'Fast geschafft mit der Vorarbeit! Nur noch die Entscheidung.',
-  4: 'Super Fortschritt! Die Demo-Daten kommen gleich.',
-  5: 'Du machst das großartig! Der Videochat ist der Höhepunkt.',
-  6: 'Entspann dich kurz! Die Unterlagen sind unterwegs.',
-  7: 'Letzter Schritt! Lade deine Nachweise hoch.',
-  8: 'Fantastisch! Du hast es fast geschafft! 🎉',
+  4: 'Wichtiger Schritt! Lade deine Ausweisdokumente hoch.',
+  5: 'Super Fortschritt! Die Demo-Daten kommen gleich.',
+  6: 'Du machst das großartig! Der Videochat ist der Höhepunkt.',
+  7: 'Entspann dich kurz! Die Unterlagen sind unterwegs.',
+  8: 'Letzter Schritt! Lade deine Nachweise hoch.',
+  9: 'Fantastisch! Du hast es fast geschafft! 🎉',
 };
 
 interface WorkflowStepCardProps {
@@ -63,7 +69,7 @@ export default function WorkflowStepCard({
 }: WorkflowStepCardProps) {
   const isDone = step.number < currentStep;
   const isActive = step.number === currentStep;
-  const colors = stepColors[step.number];
+  const colors = stepColors[step.number] || stepColors[1];
   const stepImage = stepImages[step.number];
 
   return (
@@ -130,12 +136,12 @@ export default function WorkflowStepCard({
             </p>
 
             {/* Motivational message for active step */}
-            {isActive && (
+            {isActive && motivationalMessages[step.number] && (
               <div className="mt-3 flex items-center gap-2">
                 <div className={cn('w-1.5 h-1.5 rounded-full animate-pulse', 
                   step.number <= 2 ? 'bg-blue-500' :
                   step.number <= 4 ? 'bg-amber-500' :
-                  step.number <= 6 ? 'bg-cyan-500' : 'bg-green-500'
+                  step.number <= 7 ? 'bg-cyan-500' : 'bg-green-500'
                 )} />
                 <p className="text-xs font-medium text-muted-foreground italic">
                   {motivationalMessages[step.number]}
@@ -154,14 +160,14 @@ export default function WorkflowStepCard({
               className="w-full h-32 object-cover opacity-90 group-hover:opacity-100 transition-opacity"
             />
             <div className="absolute bottom-4 right-4 px-2 py-1 bg-background/80 backdrop-blur-sm rounded-lg text-xs font-medium text-muted-foreground">
-              Schritt {step.number} von 8
+              Schritt {step.number} von {TOTAL_STEPS}
             </div>
           </div>
         )}
       </div>
 
       {/* Progress line connector */}
-      {step.number < 8 && (
+      {step.number < TOTAL_STEPS && (
         <div className={cn(
           'absolute left-9 top-[4.5rem] w-0.5 h-6 -translate-x-1/2',
           isDone ? 'bg-primary' : 'bg-border'

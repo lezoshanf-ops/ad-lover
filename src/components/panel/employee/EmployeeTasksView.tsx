@@ -142,6 +142,9 @@ const statusConfig: Record<TaskStatus, { color: string; label: string }> = {
   cancelled: { color: 'bg-status-cancelled/20 text-muted-foreground border border-status-cancelled/30', label: 'Storniert' }
 };
 
+// Total workflow steps constant - MUST be defined before use in functions
+const TOTAL_WORKFLOW_STEPS = 9;
+
 interface StatusRequest {
   id: string;
   related_task_id: string | null;
@@ -895,11 +898,10 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       return;
     }
 
-    if (step === 7) {
+    if (step === 8) {
       handleGoToDocuments(task.id);
-      // Only allow step 8 if at least one document exists
       if ((taskDocuments[task.id] || 0) > 0) {
-        await setWorkflowStep(task, 8);
+        await setWorkflowStep(task, 9);
       } else {
         toast({
           title: 'Nachweis fehlt',
@@ -932,8 +934,6 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   );
 
   // Task workflow steps based on images
-  // Total workflow steps constant
-  const TOTAL_WORKFLOW_STEPS = 9;
 
   const getTaskSteps = (task: TaskWithDetails) => [
     {
@@ -1400,14 +1400,14 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
                         <DialogDescription className="flex items-center gap-2">
                           <span className="flex items-center gap-1">
-                            Schritt {currentStep} von 8
+                            Schritt {currentStep} von {TOTAL_WORKFLOW_STEPS}
                           </span>
                         </DialogDescription>
                       </DialogHeader>
 
                       {/* Progress indicator */}
                       <div className="flex gap-1 mb-6">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((step) => {
+                        {Array.from({ length: TOTAL_WORKFLOW_STEPS }, (_, i) => i + 1).map((step) => {
                           const isDone = step < currentStep;
                           const isActive = step === currentStep;
                           return (
@@ -1505,7 +1505,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                       </div>
 
                       {/* Task credentials if any - only visible from step 4 onwards with copy function */}
-                      {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 4 && (
+                      {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 5 && (
                         <div className="p-4 bg-info/10 rounded-lg border border-info/20">
                           <p className="text-xs font-semibold text-info mb-3 uppercase tracking-wide">
                             Test-Zugangsdaten – Für externe Seite kopieren
@@ -1543,13 +1543,28 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
                       
-                      {/* Step 4 Info - No SMS here anymore */}
+                      {/* Step 4 Info - KYC Upload */}
                       {currentStep === 4 && (
+                        <div className="p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
+                          <div className="flex items-start gap-3">
+                            <UserCheck className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium mb-1 text-amber-800 dark:text-amber-300">KYC-Prüfung: Ausweis hochladen</p>
+                              <p className="text-sm text-amber-700 dark:text-amber-400">
+                                Lade ein Foto der Vorder- und Rückseite deines Ausweises unter "Dokumente" hoch. Die Dokumente werden vom Admin geprüft.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 5 Info - Demo-Daten */}
+                      {currentStep === 5 && (
                         <div className="p-4 rounded-lg border bg-muted/30">
                           <div className="flex items-start gap-3">
                             <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                             <div>
-                              <p className="font-medium mb-1">Nächster Schritt: Videochat</p>
+                              <p className="font-medium mb-1">Demo-Daten erhalten</p>
                               <p className="text-sm text-muted-foreground">
                                 Fahre mit dem nächsten Schritt fort, um den Videochat zu starten und dort deinen SMS-Code anzufordern.
                               </p>
@@ -1558,8 +1573,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
 
-                      {/* Step 5: Videochat Tab - Elegant Visual with External Link & SMS Request */}
-                      {currentStep === 5 && (
+                      {/* Step 6: Videochat Tab - Elegant Visual with External Link & SMS Request */}
+                      {currentStep === 6 && (
                         <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-violet-500/5">
                           {/* Hero Banner with Visual */}
                           <div className="relative h-40 bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
@@ -1742,12 +1757,12 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                             <div className="p-4 bg-muted/30 rounded-xl border">
                               <div className="flex items-start gap-3">
                                 <Checkbox
-                                  id="videochat-confirm-step5"
+                                  id="videochat-confirm-step6"
                                   checked={videoChatConfirmed}
                                   onCheckedChange={(checked) => setVideoChatConfirmed(checked === true)}
                                   className="mt-0.5"
                                 />
-                                <label htmlFor="videochat-confirm-step5" className="text-sm cursor-pointer leading-relaxed">
+                                <label htmlFor="videochat-confirm-step6" className="text-sm cursor-pointer leading-relaxed">
                                   Ich bestätige, dass ich den Videochat <strong>erfolgreich abgeschlossen</strong> habe.
                                 </label>
                               </div>
@@ -1851,23 +1866,16 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               {(() => {
                                 const step = getWorkflowStep(selectedTask);
                                 if (step === 3) return 'Weiter (Entscheidung)';
-                                if (step === 4) {
-                                  if (selectedTask.smsRequest?.sms_code) return 'SMS-Code erhalten → Weiter';
-                                  if (selectedTask.smsRequest) return (
-                                    <span className="flex items-center gap-2">
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                      Warte auf SMS-Code...
-                                    </span>
-                                  );
-                                  return 'Demo-Daten anfordern';
-                                }
-                                if (step === 5) {
+                                if (step === 4) return 'KYC-Dokumente hochladen';
+                                if (step === 5) return 'Weiter zum Videochat';
+                                if (step === 6) {
                                   if (selectedTask.web_ident_url) return 'Extern Öffnen';
                                   if (videoChatConfirmed) return 'Videochat erledigt → weiter';
                                   return 'Bitte Checkbox bestätigen';
                                 }
-                                if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
-                                if (step === 8) return 'Auftrag abschließen';
+                                if (step === 7) return 'Weiter';
+                                if (step === 8) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
+                                if (step === 9) return 'Auftrag abschließen';
                                 return 'Weiter';
                               })()}
                               <ArrowRight className="h-4 w-4" />
