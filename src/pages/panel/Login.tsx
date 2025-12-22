@@ -162,11 +162,24 @@ export default function PanelLogin() {
             {/* Submit button */}
             <Button 
               type="submit" 
-              className="w-full h-12 text-base font-semibold gap-2"
+              className={`w-full h-12 text-base font-semibold gap-2 transition-all duration-300 ${
+                isLoading 
+                  ? 'animate-pulse scale-[0.98]' 
+                  : 'hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]'
+              }`}
               disabled={isLoading}
             >
-              <User className="h-5 w-5" />
-              {isLoading ? 'Anmelden...' : 'Anmelden'}
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <span>Anmelden...</span>
+                </div>
+              ) : (
+                <>
+                  <User className="h-5 w-5" />
+                  Anmelden
+                </>
+              )}
             </Button>
             
             {/* Info notice */}
