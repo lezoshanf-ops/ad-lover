@@ -1042,6 +1042,21 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                     </div>
                   )}
                   
+                  {/* SMS Code Display on Card */}
+                  {task.smsRequest?.sms_code && (
+                    <div className="px-4 py-2 bg-primary/5 border-y border-primary/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-primary">
+                          <MessageSquare className="h-4 w-4" />
+                          <span className="text-xs font-medium uppercase tracking-wide">SMS-Code</span>
+                        </div>
+                        <span className="font-mono font-bold text-primary tracking-widest">
+                          {task.smsRequest.sms_code}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Step Progress Overview */}
                   {task.assignment?.accepted_at && (
                     <div className="px-4 py-3 border-t border-border/50">
