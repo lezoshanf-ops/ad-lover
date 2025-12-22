@@ -83,7 +83,7 @@ export default function PanelLogin() {
       </div>
       
       {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-background">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-card">
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>
@@ -94,15 +94,15 @@ export default function PanelLogin() {
             <img 
               src={logo} 
               alt="Fritze IT" 
-              className="h-10 w-auto dark:brightness-0 dark:invert" 
+              className="h-10 w-auto" 
             />
-            <span className="text-xl font-bold text-foreground">Fritze IT</span>
+            <span className="text-xl font-bold text-card-foreground">Fritze IT</span>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
                 E-Mail-Adresse
               </Label>
               <div className="relative">
@@ -113,7 +113,7 @@ export default function PanelLogin() {
                   placeholder="test@test.de"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-12 h-12 text-base border-primary/20 focus:border-primary"
+                  className="pl-12 h-12 text-base border-border bg-background text-foreground focus:border-primary"
                   autoComplete="email"
                 />
               </div>
@@ -122,7 +122,7 @@ export default function PanelLogin() {
             
             {/* Password field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
+              <Label htmlFor="password" className="text-sm font-medium text-card-foreground">
                 Ihr Passwort
               </Label>
               <div className="relative">
@@ -133,7 +133,7 @@ export default function PanelLogin() {
                   placeholder="Ihr Passwort"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-12 h-12 text-base border-muted focus:border-primary"
+                  className="pl-12 h-12 text-base border-border bg-background text-foreground focus:border-primary"
                   autoComplete="current-password"
                 />
               </div>
@@ -147,7 +147,7 @@ export default function PanelLogin() {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                 />
-                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer text-card-foreground">
                   Angemeldet bleiben
                 </Label>
               </div>
@@ -170,9 +170,9 @@ export default function PanelLogin() {
             </Button>
             
             {/* Info notice */}
-            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+            <div className="bg-muted rounded-lg p-4 border border-border">
               <p className="text-sm text-muted-foreground text-center">
-                <strong>Hinweis:</strong> Der Zugang wird ausschließlich durch das Team per E-Mail vergeben. Bei Fragen wenden Sie sich bitte an Ihren Ansprechpartner.
+                <strong className="text-foreground">Hinweis:</strong> Der Zugang wird ausschließlich durch das Team per E-Mail vergeben. Bei Fragen wenden Sie sich bitte an Ihren Ansprechpartner.
               </p>
             </div>
             
