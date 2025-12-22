@@ -694,23 +694,37 @@ export default function EmployeeTasksView() {
     }
 
     if (step === 4) {
-      // SMS is only requested in the Web-Ident window, not here
-      // Just check if code is available, otherwise inform user to use Web-Ident
+      // User needs to have SMS code before proceeding to step 5
       if (task.smsRequest?.sms_code) {
         await setWorkflowStep(task, 5);
         return;
       }
 
-      // Proceed to step 5 where Web-Ident opens and SMS can be requested there
-      await setWorkflowStep(task, 5);
+      // Request SMS code if not already requested
+      if (!task.smsRequest) {
+        await handleRequestSms(task.id);
+        toast({
+          title: 'Demo-Daten angefordert',
+          description: 'Bitte warte auf den SMS-Code vom Admin.',
+        });
+        return;
+      }
+
+      // SMS requested but not yet received
+      toast({
+        title: 'Warte auf SMS-Code',
+        description: 'Der Admin hat die Anfrage erhalten. Bitte warte auf den Code.',
+      });
       return;
     }
 
     if (step === 5) {
+      // Open Web-Ident dialog if URL exists
       if (task.web_ident_url) {
         setWebIdentDialog({ open: true, url: task.web_ident_url, taskTitle: task.title, taskId: task.id });
+        return;
       }
-      // proceed manually after finishing the video chat
+      // Only proceed to step 6 when user explicitly confirms video chat is done
       await setWorkflowStep(task, 6);
       return;
     }
@@ -1407,8 +1421,12 @@ export default function EmployeeTasksView() {
                               {(() => {
                                 const step = getWorkflowStep(selectedTask);
                                 if (step === 3) return 'Weiter (Entscheidung)';
-                                if (step === 4) return selectedTask.smsRequest?.sms_code ? 'Weiter' : 'Demo-Daten anfordern / prüfen';
-                                if (step === 5) return 'Videochat erledigt → weiter';
+                                if (step === 4) {
+                                  if (selectedTask.smsRequest?.sms_code) return 'SMS-Code erhalten → Weiter';
+                                  if (selectedTask.smsRequest) return 'Warte auf SMS-Code...';
+                                  return 'Demo-Daten anfordern';
+                                }
+                                if (step === 5) return selectedTask.web_ident_url ? 'Videochat öffnen' : 'Videochat erledigt → weiter';
                                 if (step === 7) return (taskDocuments[selectedTask.id] || 0) > 0 ? 'Weiter zu Abschluss' : 'Nachweis hochladen';
                                 if (step === 8) return 'Auftrag abschließen';
                                 return 'Weiter';
