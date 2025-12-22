@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText, Search, ArrowUpDown, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Calendar, User, Phone, Euro, AlertCircle, Mail, Key, Activity, MessageCircle, Radio, CheckCircle, Clock, Trash2, ExternalLink, Globe, Eye, Video, FileText, Search, ArrowUpDown, CheckCircle2, XCircle, Save, BookOpen, Bookmark, CircleDot, StickyNote } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -45,12 +45,27 @@ const statusLabels: Record<TaskStatus, string> = {
   cancelled: 'Storniert'
 };
 
+interface TaskTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  special_compensation: number | null;
+  test_email: string | null;
+  test_password: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
 export default function AdminTasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [assignments, setAssignments] = useState<(TaskAssignment & { progress_notes?: string; workflow_step?: number; workflow_digital?: boolean | null })[]>([]);
+  const [assignments, setAssignments] = useState<(TaskAssignment & { progress_notes?: string; workflow_step?: number; workflow_digital?: boolean | null; step_notes?: Record<string, string> })[]>([]);
   const [employees, setEmployees] = useState<Profile[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
@@ -61,6 +76,7 @@ export default function AdminTasksView() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [statusRequestDialog, setStatusRequestDialog] = useState<{ open: boolean; task: Task | null; assignee: Profile | null }>({ open: false, task: null, assignee: null });
   const [statusRequestMessage, setStatusRequestMessage] = useState('');
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -80,6 +96,7 @@ export default function AdminTasksView() {
   useEffect(() => {
     fetchTasks();
     fetchEmployees();
+    fetchTemplates();
 
     // Realtime subscription for live updates
     const channel = supabase
@@ -96,6 +113,14 @@ export default function AdminTasksView() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchTemplates = async () => {
+    const { data } = await supabase
+      .from('task_templates')
+      .select('*')
+      .order('title');
+    if (data) setTemplates(data as TaskTemplate[]);
+  };
 
   const fetchTasks = async () => {
     const { data: tasksData } = await supabase
@@ -174,11 +199,49 @@ export default function AdminTasksView() {
     if (error) {
       toast({ title: 'Fehler', description: 'Auftrag konnte nicht erstellt werden.', variant: 'destructive' });
     } else {
+      // Save as template if checkbox is checked
+      if (saveAsTemplate && newTask.title.trim()) {
+        await supabase.from('task_templates').insert({
+          title: newTask.title.trim(),
+          description: newTask.description?.trim() || null,
+          priority: newTask.priority,
+          special_compensation: newTask.special_compensation ? parseFloat(newTask.special_compensation) : null,
+          test_email: newTask.test_email?.trim() || null,
+          test_password: newTask.test_password || null,
+          notes: null,
+          created_by: user?.id
+        });
+        fetchTemplates();
+      }
       toast({ title: 'Erfolg', description: 'Auftrag wurde erstellt.' });
       setIsDialogOpen(false);
       setNewTask({ title: '', description: '', customer_name: '', customer_phone: '', deadline: '', priority: 'medium', special_compensation: '', test_email: '', test_password: '', web_ident_url: '' });
+      setSaveAsTemplate(false);
       fetchTasks();
     }
+  };
+
+  const handleLoadTemplate = (template: TaskTemplate) => {
+    setNewTask({
+      title: template.title,
+      description: template.description || '',
+      customer_name: '',
+      customer_phone: '',
+      deadline: '',
+      priority: template.priority,
+      special_compensation: template.special_compensation?.toString() || '',
+      test_email: template.test_email || '',
+      test_password: template.test_password || '',
+      web_ident_url: ''
+    });
+    setIsTemplateDialogOpen(false);
+    toast({ title: 'Vorlage geladen', description: `"${template.title}" wurde geladen.` });
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    await supabase.from('task_templates').delete().eq('id', templateId);
+    fetchTemplates();
+    toast({ title: 'Vorlage gelöscht' });
   };
 
   const handleAssignTask = async () => {
@@ -348,6 +411,44 @@ export default function AdminTasksView() {
               <DialogTitle>Neuen Auftrag erstellen</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Template Selection */}
+              {templates.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Vorlage laden
+                    </Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setIsTemplateDialogOpen(true)}
+                    >
+                      Vorlagen verwalten
+                    </Button>
+                  </div>
+                  <Select onValueChange={(v) => {
+                    const template = templates.find(t => t.id === v);
+                    if (template) handleLoadTemplate(template);
+                  }}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Vorlage auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <span className="flex items-center gap-2">
+                            <Bookmark className="h-3 w-3" />
+                            {template.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Titel *</Label>
                 <Input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Auftragstitel" />
@@ -424,6 +525,22 @@ export default function AdminTasksView() {
                   <p className="text-xs text-muted-foreground">Link zur Web-Ident-Verifizierung, falls erforderlich</p>
                 </div>
               </div>
+
+              {/* Save as Template Checkbox */}
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="saveAsTemplate"
+                  checked={saveAsTemplate}
+                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                  className="h-4 w-4 rounded border-muted-foreground"
+                />
+                <Label htmlFor="saveAsTemplate" className="text-sm cursor-pointer flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  Als Vorlage speichern
+                </Label>
+              </div>
+
               <Button onClick={handleCreateTask} className="w-full">Auftrag erstellen</Button>
             </div>
           </DialogContent>
@@ -523,6 +640,17 @@ export default function AdminTasksView() {
                           <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs">
                             +{task.special_compensation.toFixed(0)}€
                           </Badge>
+                        )}
+                        {/* Workflow Progress Traffic Light */}
+                        {assignment && assignment.workflow_step && (
+                          <div className="flex items-center gap-1 ml-1" title={`Schritt ${assignment.workflow_step}/8`}>
+                            <CircleDot className={`h-4 w-4 ${
+                              assignment.workflow_step <= 2 ? 'text-red-500' :
+                              assignment.workflow_step <= 5 ? 'text-yellow-500' :
+                              'text-green-500'
+                            }`} />
+                            <span className="text-xs text-muted-foreground">{assignment.workflow_step}/8</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -638,16 +766,37 @@ export default function AdminTasksView() {
                     )}
                   </div>
                   
-                  {/* Expandable details - only show if there's content */}
-                  {(task.description || assignment?.progress_notes) && (
-                    <div className="mt-2 pt-2 border-t border-border/50 text-sm">
+                  {/* Expandable details - show description, notes, and step_notes */}
+                  {(task.description || assignment?.progress_notes || (assignment?.step_notes && Object.keys(assignment.step_notes).length > 0)) && (
+                    <div className="mt-2 pt-2 border-t border-border/50 text-sm space-y-2">
                       {task.description && (
                         <p className="text-muted-foreground line-clamp-2">{task.description}</p>
                       )}
                       {assignment?.progress_notes && (
-                        <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
-                          <span className="font-medium text-muted-foreground">Notiz: </span>
-                          {assignment.progress_notes}
+                        <div className="p-2 bg-muted/50 rounded text-xs">
+                          <span className="font-medium text-muted-foreground flex items-center gap-1">
+                            <StickyNote className="h-3 w-3" />
+                            Mitarbeiter-Notiz:
+                          </span>
+                          <p className="mt-1">{assignment.progress_notes}</p>
+                        </div>
+                      )}
+                      {assignment?.step_notes && Object.keys(assignment.step_notes).length > 0 && (
+                        <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
+                          <span className="font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1 mb-1">
+                            <Activity className="h-3 w-3" />
+                            Workflow-Notizen:
+                          </span>
+                          <div className="space-y-1">
+                            {Object.entries(assignment.step_notes)
+                              .filter(([_, note]) => note && note.trim())
+                              .map(([step, note]) => (
+                                <div key={step} className="flex gap-2">
+                                  <span className="text-muted-foreground shrink-0">Schritt {step}:</span>
+                                  <span>{note}</span>
+                                </div>
+                              ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1098,6 +1247,98 @@ export default function AdminTasksView() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Management Dialog */}
+      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Vorlagen verwalten
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {templates.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Bookmark className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Keine Vorlagen vorhanden.</p>
+                <p className="text-sm mt-1">Erstelle einen Auftrag und aktiviere "Als Vorlage speichern".</p>
+              </div>
+            ) : (
+              templates.map((template) => (
+                <div key={template.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{template.title}</h4>
+                      {template.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{template.description}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge className={priorityColors[template.priority]} variant="secondary">
+                          {template.priority === 'low' ? 'Niedrig' : template.priority === 'medium' ? 'Mittel' : template.priority === 'high' ? 'Hoch' : 'Dringend'}
+                        </Badge>
+                        {template.special_compensation && (
+                          <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                            {template.special_compensation}€
+                          </Badge>
+                        )}
+                        {template.test_email && (
+                          <Badge variant="secondary" className="bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                            Test-Daten
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          handleLoadTemplate(template);
+                          setIsTemplateDialogOpen(false);
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Die Vorlage "{template.title}" wird dauerhaft gelöscht.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteTemplate(template.id)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
+              Schließen
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
