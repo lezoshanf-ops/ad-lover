@@ -1433,13 +1433,19 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               <p className="text-sm text-muted-foreground max-w-xs">
                                 Der Admin wurde benachrichtigt. Dein SMS-Code wird in Kürze bereitgestellt.
                               </p>
-                              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                              
+                              {/* Request timestamp */}
+                              <div className="flex items-center gap-2 mt-3 px-3 py-1.5 bg-muted/50 rounded-full text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
-                                Werktags 9-18 Uhr: ca. 30 Minuten
+                                Angefragt um {format(new Date(selectedTask.smsRequest.requested_at), 'HH:mm', { locale: de })} Uhr
                               </div>
                               
-                              {/* Countdown Timer */}
-                              <div className="mt-4 p-3 bg-muted/50 rounded-lg border">
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <span>Werktags 9-18 Uhr: ca. 30 Minuten</span>
+                              </div>
+                              
+                              {/* Countdown Timer & Refresh */}
+                              <div className="mt-4 p-3 bg-muted/50 rounded-lg border w-full max-w-xs">
                                 <div className="flex items-center justify-center gap-2">
                                   <RefreshCcw className="h-4 w-4 text-primary" />
                                   <span className="text-sm font-medium">
@@ -1453,6 +1459,23 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                     style={{ width: `${(smsCountdown / 30) * 100}%` }}
                                   />
                                 </div>
+                                
+                                {/* Manual refresh button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full mt-3 gap-2"
+                                  disabled={isRefreshing}
+                                  onClick={async () => {
+                                    setIsRefreshing(true);
+                                    await fetchTasks();
+                                    setSmsCountdown(30);
+                                    setTimeout(() => setIsRefreshing(false), 500);
+                                  }}
+                                >
+                                  <RefreshCcw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                                  {isRefreshing ? 'Prüfe...' : 'Jetzt prüfen'}
+                                </Button>
                               </div>
                             </div>
                           ) : (
