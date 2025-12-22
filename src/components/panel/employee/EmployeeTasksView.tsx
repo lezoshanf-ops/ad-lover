@@ -154,6 +154,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const realtimeSubscribed = useRef(false);
   const pollingIntervalId = useRef<number | null>(null);
   const pollingTimeoutId = useRef<number | null>(null);
+  const smsPollingIntervalId = useRef<number | null>(null);
 
   useEffect(() => {
     if (permission === 'default') {
@@ -344,6 +345,35 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       };
     }
   }, [user, notifyNewTask, notifySmsCode]);
+
+  // SMS polling for step 4 - refresh every 30 seconds when waiting for SMS code
+  useEffect(() => {
+    // Check if any task is waiting for SMS code (step 4, requested but no code yet)
+    const taskWaitingForSms = tasks.find(task => {
+      const step = task.assignment?.workflow_step || 1;
+      return step === 4 && task.smsRequest && !task.smsRequest.sms_code;
+    });
+
+    if (taskWaitingForSms) {
+      // Start 30-second polling
+      smsPollingIntervalId.current = window.setInterval(() => {
+        fetchTasks();
+      }, 30000);
+    } else {
+      // Clear polling when not needed
+      if (smsPollingIntervalId.current) {
+        window.clearInterval(smsPollingIntervalId.current);
+        smsPollingIntervalId.current = null;
+      }
+    }
+
+    return () => {
+      if (smsPollingIntervalId.current) {
+        window.clearInterval(smsPollingIntervalId.current);
+        smsPollingIntervalId.current = null;
+      }
+    };
+  }, [tasks]);
 
   const fetchStatusRequests = async () => {
     if (!user) return;
