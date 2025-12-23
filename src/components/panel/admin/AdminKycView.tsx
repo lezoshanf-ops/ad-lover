@@ -388,9 +388,9 @@ export default function AdminKycView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">KYC-Prüfung</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Ausweisprüfung</h2>
           <p className="text-muted-foreground">
-            Eingereichte Dokumente prüfen und genehmigen
+            Eingereichte Ausweisdokumente prüfen und genehmigen
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -438,7 +438,7 @@ export default function AdminKycView() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{kycDocuments.length}</p>
-                <p className="text-xs text-muted-foreground">KYC-Dokumente</p>
+                <p className="text-xs text-muted-foreground">Ausweisdokumente</p>
               </div>
             </div>
           </CardContent>
@@ -488,7 +488,7 @@ export default function AdminKycView() {
           </TabsTrigger>
           <TabsTrigger value="kyc" className="gap-2 relative">
             <FileCheck className="h-4 w-4" />
-            KYC (Ausweis)
+            Ausweisdokumente
             {pendingKycDocuments.length > 0 && (
               <Badge variant="secondary" className="ml-1 bg-amber-500/20 text-amber-700 dark:text-amber-400 animate-pulse">
                 {pendingKycDocuments.length}

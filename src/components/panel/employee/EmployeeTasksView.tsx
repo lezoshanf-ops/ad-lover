@@ -938,24 +938,24 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
       return;
     }
 
-    if (step === 4) {
-      // Step 4: KYC - Check if at least 2 documents (front + back ID) are uploaded
-      if (!hasKycDocuments(task.id)) {
-        handleGoToDocuments(task.id);
+      if (step === 4) {
+        // Step 4: ID Upload - Check if at least 2 documents (front + back ID) are uploaded
+        if (!hasKycDocuments(task.id)) {
+          handleGoToDocuments(task.id);
+          toast({
+            title: 'Ausweisfotos fehlen',
+            description: 'Bitte lade Vorder- und Rückseite deines Ausweises hoch (mindestens 2 Fotos).',
+            variant: 'destructive',
+          });
+          return;
+        }
         toast({
-          title: 'KYC-Dokumente fehlen',
-          description: 'Bitte lade Vorder- und Rückseite deines Ausweises hoch (mindestens 2 Dokumente).',
-          variant: 'destructive',
+          title: 'Ausweisfotos vorhanden',
+          description: 'Super! Deine Ausweisfotos wurden erfolgreich hochgeladen.',
         });
+        await setWorkflowStep(task, 5);
         return;
       }
-      toast({
-        title: 'KYC-Dokumente vorhanden',
-        description: 'Deine Ausweisdokumente wurden erfolgreich hochgeladen.',
-      });
-      await setWorkflowStep(task, 5);
-      return;
-    }
 
     if (step === 5) {
       // Step 5: Demo-Daten - Just proceed to step 6
@@ -1023,48 +1023,48 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
   const getTaskSteps = (task: TaskWithDetails) => [
     {
       number: 1,
-      title: 'Bewertung der Webseite',
-      description: 'Öffne die Internetseite und nimm dir einige Minuten Zeit, um dir ein genaues Bild vom Aufbau der Seite zu machen. Achte dabei besonders auf den ersten Eindruck, die Übersichtlichkeit der Startseite, die Menüführung sowie das allgemeine Design.'
+      title: 'Webseite erkunden',
+      description: 'Schau dir die Internetseite in Ruhe an. Achte auf den ersten Eindruck, wie übersichtlich alles ist und wie dir das Design gefällt. Nimm dir ruhig ein paar Minuten Zeit dafür.'
     },
     {
       number: 2,
-      title: 'Bewertung ausfüllen',
-      description: 'Klicke im Auftrag auf „Weiter", um den Bewertungsbogen zu starten. Gib dort deine persönliche Einschätzung zum Design, zur Übersichtlichkeit und zum Gesamteindruck der Webseite ab. Fülle den Bogen vollständig aus und bestätige die Eingabe.'
+      title: 'Deine Meinung abgeben',
+      description: 'Jetzt kannst du deine ehrliche Meinung zur Webseite abgeben. Fülle den kurzen Fragebogen aus – es geht um Design, Übersichtlichkeit und deinen Gesamteindruck.'
     },
     {
       number: 3,
-      title: 'Entscheidung zum digitalen Ablauf',
-      description: 'Im nächsten Schritt wirst du gefragt, ob du den digitalen Ablauf testen möchtest. Dabei handelt es sich um einen kurzen Videochat, bei dem du dich mit Demo-Daten ausweist. Der Ablauf ist anonym, rechtlich unverbindlich und dauert nur wenige Minuten.'
+      title: 'Videochat: Ja oder Nein?',
+      description: 'Möchtest du den digitalen Ablauf mit einem kurzen Videochat testen? Das dauert nur wenige Minuten und ist komplett anonym. Du entscheidest selbst!'
     },
     {
       number: 4,
-      title: 'KYC-Prüfung (Ausweis)',
-      description: 'Lade ein Foto der Vorder- und Rückseite deines Ausweises hoch. Achte darauf, dass alle Daten gut lesbar sind. Die Dokumente werden vom Admin geprüft und freigegeben.'
+      title: 'Ausweis fotografieren',
+      description: 'Mach ein Foto von Vorder- und Rückseite deines Ausweises. Achte darauf, dass alles gut lesbar ist. Die Bilder werden nur intern geprüft.'
     },
     {
       number: 5,
-      title: 'Demo-Daten erhalten',
-      description: 'Nach deiner Zustimmung erscheinen die Demo-Daten nach kurzer Zeit in deinem System. Wenn du sie werktags zwischen 9:00 und 18:00 Uhr beantragst, stehen sie dir in der Regel innerhalb von 30 Minuten zur Verfügung.'
+      title: 'Zugangsdaten erhalten',
+      description: 'Super! Die Demo-Zugangsdaten erscheinen gleich hier. Werktags zwischen 9-18 Uhr bekommst du sie meist innerhalb von 30 Minuten.'
     },
     {
       number: 6,
-      title: 'Videochat durchführen',
-      description: 'Mit den erhaltenen Demo-Daten startest du den digitalen Ablauf auf der Webseite. Der Videochat ist kurz, dauert nur etwa fünf Minuten und kann bequem per Laptop oder Smartphone durchgeführt werden.'
+      title: 'Videochat starten',
+      description: 'Jetzt geht\'s los! Starte den Videochat auf der externen Seite. Das dauert nur etwa 5 Minuten und klappt super per Laptop oder Handy.'
     },
     {
       number: 7,
-      title: 'Unterlagen abwarten',
-      description: 'Nach erfolgreichem Abschluss des Ablaufs erhältst du automatisch postalisch neutrale Unterlagen. Diese Unterlagen sind rein simuliert und haben keine rechtliche Relevanz.'
+      title: 'Abschluss & Eindruck',
+      description: 'Geschafft! Fasse kurz deinen Eindruck vom gesamten Ablauf zusammen. Was hat dir gefallen? Was könnte besser sein?'
     },
     {
       number: 8,
       title: 'Nachweis hochladen',
-      description: 'Fotografiere oder scanne die erhaltenen Unterlagen und lade sie im Auftragssystem hoch. Achte darauf, dass die Dateien gut lesbar sind. Erst nach dem erfolgreichen Upload gilt der Auftrag als vollständig erledigt.'
+      description: 'Fast fertig! Lade noch einen Nachweis (Screenshot oder Foto) hoch, damit wir sehen können, dass alles geklappt hat.'
     },
     {
       number: 9,
-      title: 'Auftrag abschließen',
-      description: 'Sobald die Unterlagen hochgeladen wurden, kannst du den Auftrag als abgeschlossen markieren. Erst dann wird dir die vereinbarte Arbeitszeit gutgeschrieben.'
+      title: 'Fertig! 🎉',
+      description: 'Herzlichen Glückwunsch! Du kannst den Auftrag jetzt abschließen. Die Arbeitszeit wird dir gutgeschrieben.'
     }
   ];
 
@@ -1594,8 +1594,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       </div>
 
-                      {/* Task credentials - Elegant Card for External Site */}
-                      {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 5 && (
+                      {/* Task credentials - Elegant Card for External Site - Only show in steps 5 and 6 */}
+                      {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 5 && currentStep <= 6 && (
                         <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5">
                           {/* Compact Header */}
                           <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center gap-3">
@@ -1603,7 +1603,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               <Key className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-white">Demo-Zugangsdaten</h4>
+                              <h4 className="font-semibold text-white">Demo-Zugang</h4>
                               <p className="text-xs text-white/70">Für die externe Seite</p>
                             </div>
                           </div>
@@ -1677,27 +1677,27 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
                       
-                      {/* Step 4 Info - KYC Upload with Examples */}
+                      {/* Step 4 Info - ID Upload with Examples */}
                       {currentStep === 4 && (
-                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-yellow-500/5">
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-violet-500/5">
                           {/* Header */}
-                          <div className="relative h-32 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 flex items-center justify-center overflow-hidden">
+                          <div className="relative h-28 bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 flex items-center justify-center overflow-hidden">
                             <div className="absolute inset-0">
                               <div className="absolute top-4 left-4 w-16 h-16 rounded-full bg-white/10 blur-xl animate-pulse" />
                               <div className="absolute bottom-4 right-4 w-24 h-24 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
                             </div>
                             <div className="relative z-10 flex flex-col items-center gap-2">
-                              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
-                                <UserCheck className="h-7 w-7 text-white" />
+                              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
+                                <UserCheck className="h-6 w-6 text-white" />
                               </div>
-                              <h3 className="text-lg font-bold text-white">KYC-Prüfung</h3>
+                              <h3 className="text-lg font-bold text-white">Ausweis fotografieren</h3>
                             </div>
                           </div>
                           
                           <div className="p-5 space-y-4">
                             <div className="text-center">
                               <p className="text-sm text-muted-foreground mb-4">
-                                Lade ein Foto der Vorder- und Rückseite deines Ausweises hoch. Die Dokumente werden vom Admin geprüft.
+                                Fotografiere deinen Ausweis (Vorder- und Rückseite) und lade die Bilder hoch. Die Qualität muss gut sein, damit alles lesbar ist.
                               </p>
                             </div>
                             
@@ -2055,6 +2055,56 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
 
+                      {/* Step 7 Info - Final Impression Summary */}
+                      {currentStep === 7 && (
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-green-500/5 via-emerald-500/5 to-teal-500/5">
+                          {/* Header */}
+                          <div className="relative h-28 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 flex items-center justify-center overflow-hidden">
+                            <div className="absolute inset-0">
+                              <div className="absolute top-4 left-4 w-16 h-16 rounded-full bg-white/10 blur-xl animate-pulse" />
+                              <div className="absolute bottom-4 right-4 w-24 h-24 rounded-full bg-white/5 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+                            </div>
+                            <div className="relative z-10 flex flex-col items-center gap-2">
+                              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-black/20 border border-white/30">
+                                <Trophy className="h-6 w-6 text-white" />
+                              </div>
+                              <h3 className="text-lg font-bold text-white">Fast geschafft!</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="p-5 space-y-4">
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Super! Du hast den wichtigsten Teil bereits erledigt. Fasse jetzt kurz deinen Gesamteindruck zusammen.
+                              </p>
+                            </div>
+                            
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800/30">
+                              <h4 className="font-medium text-emerald-800 dark:text-emerald-300 mb-3">Was sollst du festhalten?</h4>
+                              <ul className="space-y-2 text-sm text-emerald-700 dark:text-emerald-400">
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                                  <span>Wie war der gesamte Ablauf vom Anfang bis hierher?</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                                  <span>Was hat dir besonders gut gefallen?</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                                  <span>Was könnte verbessert werden?</span>
+                                </li>
+                              </ul>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border text-sm text-muted-foreground">
+                              <Info className="h-4 w-4 shrink-0" />
+                              <span>Schreibe deine Gedanken in die Notiz unten und klicke dann auf "Weiter".</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Step Notes - separate note for each step */}
                       <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                         <div className="flex items-center justify-between">
@@ -2150,7 +2200,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                               {(() => {
                                 const step = getWorkflowStep(selectedTask);
                                 if (step === 3) return 'Weiter (Entscheidung)';
-                                if (step === 4) return 'KYC-Dokumente hochladen';
+                                if (step === 4) return 'Ausweisfotos hochladen';
                                 if (step === 5) return 'Weiter zum Videochat';
                                 if (step === 6) {
                                   if (selectedTask.web_ident_url) return 'Extern Öffnen';

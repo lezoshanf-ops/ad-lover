@@ -30,7 +30,7 @@ export default function EmployeeDocumentsView() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState('documentation');
+  const [documentType, setDocumentType] = useState('id_card');
   const [selectedTask, setSelectedTask] = useState<string>('none');
   const [uploading, setUploading] = useState(false);
   const [lockedTaskId, setLockedTaskId] = useState<string | null>(null);
@@ -137,7 +137,7 @@ export default function EmployeeDocumentsView() {
 
       toast({ title: 'Erfolg', description: 'Dokument wurde hochgeladen.' });
       setSelectedFile(null);
-      setDocumentType('documentation');
+      setDocumentType('id_card');
       setSelectedTask('none');
       // Reset file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

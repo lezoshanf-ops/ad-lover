@@ -67,6 +67,7 @@ export default function EmployeeDashboard() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [pendingEvaluations, setPendingEvaluations] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadTasks, setUnreadTasks] = useState(0);
   const [searchValue, setSearchValue] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -117,7 +118,7 @@ export default function EmployeeDashboard() {
     };
   }, []);
 
-  // Fetch unread notifications count, pending evaluations, and unread messages
+  // Fetch unread notifications count, pending evaluations, unread messages, and unread tasks
   useEffect(() => {
     if (!user) return;
 
@@ -141,6 +142,17 @@ export default function EmployeeDashboard() {
         .is('read_at', null);
 
       setUnreadMessages(directCount || 0);
+    };
+
+    const fetchUnreadTasks = async () => {
+      // Count task assignments that haven't been accepted yet (no accepted_at date)
+      const { count } = await supabase
+        .from('task_assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('accepted_at', null);
+      
+      setUnreadTasks(count || 0);
     };
 
     const fetchPendingEvaluations = async () => {
@@ -178,6 +190,7 @@ export default function EmployeeDashboard() {
 
     fetchUnreadCount();
     fetchUnreadMessages();
+    fetchUnreadTasks();
     fetchPendingEvaluations();
 
     const channel = supabase
@@ -185,7 +198,10 @@ export default function EmployeeDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchUnreadCount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, fetchUnreadMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_evaluations' }, fetchPendingEvaluations)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignments' }, fetchPendingEvaluations)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignments' }, () => {
+        fetchPendingEvaluations();
+        fetchUnreadTasks();
+      })
       .on('postgres_changes', {
         event: 'INSERT', 
         schema: 'public', 
@@ -247,7 +263,7 @@ export default function EmployeeDashboard() {
       title: 'NAVIGATION',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'tasks', label: 'Meine Aufträge', icon: ClipboardList },
+        { id: 'tasks', label: 'Meine Aufträge', icon: ClipboardList, badge: unreadTasks > 0 ? unreadTasks : undefined },
         { id: 'evaluations', label: 'Bewertungsbögen', icon: ClipboardCheck, badge: pendingEvaluations > 0 ? pendingEvaluations : undefined },
         { id: 'compensation', label: 'Sondervergütungen', icon: Euro },
         { id: 'chat', label: 'Nachrichten', icon: MessageCircle, badge: unreadMessages > 0 ? unreadMessages : undefined },
