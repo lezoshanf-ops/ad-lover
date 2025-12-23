@@ -58,11 +58,20 @@ interface TaskTemplate {
   created_at: string;
 }
 
+// Document status for task KYC
+interface TaskDocStatus {
+  task_id: string;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
 export default function AdminTasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<(TaskAssignment & { progress_notes?: string; workflow_step?: number; workflow_digital?: boolean | null; step_notes?: Record<string, string> })[]>([]);
   const [employees, setEmployees] = useState<Profile[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [taskDocStatuses, setTaskDocStatuses] = useState<TaskDocStatus[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
@@ -141,6 +150,33 @@ export default function AdminTasksView() {
     if (assignmentsData) {
       setAssignments(assignmentsData as TaskAssignment[]);
     }
+
+    // Fetch document statuses for tasks (ID cards/passports)
+    const { data: docsData } = await supabase
+      .from('documents')
+      .select('task_id, status')
+      .in('document_type', ['id_card', 'passport'])
+      .not('task_id', 'is', null);
+
+    if (docsData) {
+      // Aggregate by task_id
+      const statusMap = new Map<string, TaskDocStatus>();
+      docsData.forEach((doc) => {
+        const taskId = doc.task_id as string;
+        if (!statusMap.has(taskId)) {
+          statusMap.set(taskId, { task_id: taskId, pending: 0, approved: 0, rejected: 0 });
+        }
+        const entry = statusMap.get(taskId)!;
+        if (doc.status === 'pending') entry.pending++;
+        else if (doc.status === 'approved') entry.approved++;
+        else if (doc.status === 'rejected') entry.rejected++;
+      });
+      setTaskDocStatuses(Array.from(statusMap.values()));
+    }
+  };
+
+  const getTaskDocStatus = (taskId: string): TaskDocStatus | undefined => {
+    return taskDocStatuses.find(s => s.task_id === taskId);
   };
 
   const fetchEmployees = async () => {
@@ -686,6 +722,7 @@ export default function AdminTasksView() {
           const assignee = getTaskAssignee(task.id);
           const assignment = getTaskAssignment(task.id);
           const isHighPriority = task.priority === 'high' || task.priority === 'urgent';
+          const docStatus = getTaskDocStatus(task.id);
           return (
             <Card key={task.id} className={`overflow-hidden transition-all hover:shadow-md ${isHighPriority ? 'ring-1 ring-red-500/30' : ''}`}>
               <div className="flex items-stretch">
@@ -716,6 +753,33 @@ export default function AdminTasksView() {
                         {(task as any).skip_kyc_sms && (
                           <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
                             Ohne KYC/SMS
+                          </Badge>
+                        )}
+                        {/* Document/KYC Status Badge */}
+                        {!(task as any).skip_kyc_sms && docStatus && (
+                          <Badge className={`text-xs gap-1 ${
+                            docStatus.rejected > 0 
+                              ? 'bg-red-500/20 text-red-700 dark:text-red-400' 
+                              : docStatus.pending > 0 
+                                ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400' 
+                                : docStatus.approved > 0 
+                                  ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                                  : 'bg-muted text-muted-foreground'
+                          }`}>
+                            <FileText className="h-3 w-3" />
+                            {docStatus.rejected > 0 
+                              ? 'Ausweis abgelehnt' 
+                              : docStatus.pending > 0 
+                                ? `Ausweis prüfen (${docStatus.pending})` 
+                                : docStatus.approved > 0 
+                                  ? 'Ausweis ✓'
+                                  : 'Kein Ausweis'}
+                          </Badge>
+                        )}
+                        {!(task as any).skip_kyc_sms && !docStatus && assignment && (
+                          <Badge className="bg-muted text-muted-foreground text-xs gap-1">
+                            <FileText className="h-3 w-3" />
+                            Kein Ausweis
                           </Badge>
                         )}
                         {/* Workflow Progress Traffic Light */}
