@@ -2,14 +2,16 @@ import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { getJobById } from "@/data/jobs";
-import { ArrowLeft, MapPin, Briefcase, Clock, Building2, Euro, Send, Upload, Calendar, Wallet, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, Briefcase, Clock, Building2, Euro, Send, Upload, Calendar, Wallet, FileText, Loader2, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const job = id ? getJobById(id) : undefined;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -20,28 +22,105 @@ const JobDetail = () => {
     experience: "",
     message: "",
   });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Die Datei ist zu groß. Maximal 10 MB erlaubt.");
+        return;
+      }
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Bitte laden Sie eine PDF- oder Word-Datei hoch.");
+        return;
+      }
+      setResumeFile(file);
+      toast.success(`Lebenslauf "${file.name}" ausgewählt`);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setResumeFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const subject = encodeURIComponent(`Bewerbung: ${job?.title || "Stelle"}`);
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\n` +
-      `E-Mail: ${formData.email}\n` +
-      `Telefon: ${formData.phone || "Nicht angegeben"}\n` +
-      `Gewünschter Starttermin: ${formData.startDate}\n` +
-      `Gehaltsvorstellung: ${formData.salaryExpectation || "Keine Angabe"}\n` +
-      `Vorerfahrungen: ${formData.experience || "Keine Angabe"}\n\n` +
-      `Bewerbung für: ${job?.title}\n\n` +
-      `Nachricht:\n${formData.message}`
-    );
-    
-    window.location.href = `mailto:bewerbung@fritze-it.solutions?subject=${subject}&body=${body}`;
-    
-    toast.success("E-Mail-Programm wird geöffnet...");
-    setIsSubmitting(false);
+    try {
+      // Convert file to base64 if present
+      let resumeBase64: string | undefined;
+      let resumeFileName: string | undefined;
+      let resumeContentType: string | undefined;
+
+      if (resumeFile) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data URL prefix to get pure base64
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(resumeFile);
+        resumeBase64 = await base64Promise;
+        resumeFileName = resumeFile.name;
+        resumeContentType = resumeFile.type;
+      }
+
+      // Send application via edge function
+      const { data, error } = await supabase.functions.invoke('send-application', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          startDate: formData.startDate,
+          salaryExpectation: formData.salaryExpectation || undefined,
+          experience: formData.experience || undefined,
+          message: formData.message,
+          jobTitle: job?.title || "Stelle",
+          resumeBase64,
+          resumeFileName,
+          resumeContentType,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success("Bewerbung erfolgreich gesendet! Sie erhalten eine Bestätigungs-E-Mail.");
+      
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        startDate: "",
+        salaryExpectation: "",
+        experience: "",
+        message: "",
+      });
+      setResumeFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Error sending application:", error);
+      toast.error("Fehler beim Senden der Bewerbung. Bitte versuchen Sie es erneut.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!job) {
@@ -265,11 +344,53 @@ const JobDetail = () => {
                       />
                     </div>
 
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <div className="flex items-start gap-2 text-muted-foreground text-xs">
-                        <Upload className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <p>Bitte fügen Sie Ihren Lebenslauf als Anhang in der E-Mail hinzu.</p>
-                      </div>
+                    {/* Resume Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                        <Upload className="w-4 h-4 text-primary" />
+                        Lebenslauf hochladen
+                      </label>
+                      
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="resume-upload"
+                      />
+                      
+                      {resumeFile ? (
+                        <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                          <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{resumeFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="p-1 hover:bg-primary/20 rounded-full transition-colors"
+                          >
+                            <X className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="resume-upload"
+                          className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
+                        >
+                          <Upload className="w-8 h-8 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground text-center">
+                            Klicken oder Datei hierher ziehen
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            PDF oder Word (max. 10 MB)
+                          </span>
+                        </label>
+                      )}
                     </div>
 
                     <Button 
@@ -277,7 +398,14 @@ const JobDetail = () => {
                       className="w-full"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "Wird gesendet..." : "Bewerbung senden"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Wird gesendet...
+                        </>
+                      ) : (
+                        "Bewerbung senden"
+                      )}
                     </Button>
                   </div>
                 </form>

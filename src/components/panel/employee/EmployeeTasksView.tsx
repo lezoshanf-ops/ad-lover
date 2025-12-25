@@ -864,9 +864,9 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
   };
 
-  // Check if task has KYC documents uploaded (ID front/back - need at least 2)
+  // Check if task has KYC documents uploaded (ID front/back + address proof - need at least 3)
   const hasKycDocuments = (taskId: string) => {
-    return (taskDocuments[taskId] || 0) >= 2;
+    return (taskDocuments[taskId] || 0) >= 3;
   };
 
   // Helper to validate step notes before proceeding
@@ -940,12 +940,12 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
     }
 
       if (step === 4) {
-        // Step 4: ID Upload - Check if at least 2 documents (front + back ID) are uploaded
+        // Step 4: ID Upload - Check if at least 3 documents (front + back ID + address proof) are uploaded
         if (!hasKycDocuments(task.id)) {
           handleGoToDocuments(task.id);
           toast({
-            title: 'Ausweisfotos fehlen',
-            description: 'Bitte lade Vorder- und Rückseite deines Ausweises hoch (mindestens 2 Fotos).',
+            title: 'Dokumente fehlen',
+            description: 'Bitte lade Vorder- und Rückseite deines Ausweises sowie einen Adressnachweis hoch (mindestens 3 Dokumente).',
             variant: 'destructive',
           });
           return;
@@ -1527,32 +1527,53 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         })}
                       </div>
 
-                      {/* Workflow steps with images */}
-                      <div className="space-y-4" ref={workflowContentRef}>
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold text-lg">Aufgabenverlauf</h3>
-                        </div>
-                        <div className="space-y-3">
-                          {steps.map((step) => (
-                            <div
-                              key={step.number}
-                              id={`workflow-step-${step.number}`}
-                              className="scroll-mt-4"
+                      {/* Website URL - Show in all steps except step 6 (videochat) */}
+                      {selectedTask.web_ident_url && currentStep !== 6 && (
+                        <div className="rounded-xl border overflow-hidden bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5">
+                          <div className="p-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                                <Globe className="h-5 w-5 text-white" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm">Zu bewertende Website</p>
+                                <p className="text-xs text-muted-foreground truncate">{selectedTask.web_ident_url}</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 shrink-0 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                              onClick={() => window.open(selectedTask.web_ident_url!, '_blank', 'noopener,noreferrer')}
                             >
+                              <ExternalLink className="h-4 w-4" />
+                              Öffnen
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Current Step - Elegant Single Page View */}
+                      <div className="space-y-4" ref={workflowContentRef}>
+                        {(() => {
+                          const currentStepData = steps.find(s => s.number === currentStep);
+                          if (!currentStepData) return null;
+                          
+                          return (
+                            <div id={`workflow-step-${currentStep}`} className="space-y-4">
                               <WorkflowStepCard
-                                step={step}
+                                step={currentStepData}
                                 currentStep={currentStep}
-                                isExpanded={step.number === currentStep}
+                                isExpanded={true}
                               />
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Bewertungsbogen Hinweis (Step 2) */}
                       {currentStep === 2 && (
-                        <div className="mt-6 p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
+                        <div className="p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30">
                           <h4 className="font-medium mb-2 text-amber-800 dark:text-amber-300">Bewertungsbogen ausfüllen</h4>
                           <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
                             {taskEvaluations[selectedTask.id] 
@@ -1586,28 +1607,35 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                         </div>
                       )}
 
-                      {/* Video Chat Status Section */}
-                      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                        <h4 className="font-medium mb-3">Video-Chat Status</h4>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Video className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Video Beratung</p>
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="w-2 h-2 rounded-full bg-amber-500" />
-                              <span className="text-muted-foreground">
-                                {(selectedTask.assignment as any)?.workflow_digital === true
-                                  ? 'Digitaler Ablauf gewählt'
-                                  : (selectedTask.assignment as any)?.workflow_digital === false
-                                    ? 'Abgelehnt'
-                                    : 'Noch nicht entschieden'}
-                              </span>
+                      {/* Video Chat Status Section - Only show when NOT on step 6 */}
+                      {currentStep !== 6 && (
+                        <div className="p-4 bg-muted/30 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Video className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Video Beratung</p>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className={`w-2 h-2 rounded-full ${
+                                  (selectedTask.assignment as any)?.workflow_digital === true
+                                    ? 'bg-green-500'
+                                    : (selectedTask.assignment as any)?.workflow_digital === false
+                                      ? 'bg-red-500'
+                                      : 'bg-amber-500'
+                                }`} />
+                                <span className="text-muted-foreground">
+                                  {(selectedTask.assignment as any)?.workflow_digital === true
+                                    ? 'Digitaler Ablauf gewählt'
+                                    : (selectedTask.assignment as any)?.workflow_digital === false
+                                      ? 'Abgelehnt'
+                                      : 'Noch nicht entschieden'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Task credentials - Elegant Card for External Site - Only show in steps 5 and 6 */}
                       {(selectedTask.test_email || selectedTask.test_password) && currentStep >= 5 && currentStep <= 6 && (
@@ -1762,8 +1790,8 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                 <div className="space-y-3">
                                   {/* Upload Counter */}
                                   <div className="flex items-center justify-center gap-2 flex-wrap">
-                                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${totalDocs >= 2 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
-                                      {totalDocs} / 2 Dokumente
+                                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${totalDocs >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                                      {totalDocs} / 3 Dokumente
                                     </span>
                                   </div>
                                   
@@ -1814,7 +1842,7 @@ const [savingStepNote, setSavingStepNote] = useState<string | null>(null);
                                   )}
                                   
                                   {/* All Approved Message */}
-                                  {kycStatus?.approved >= 2 && kycStatus?.rejected === 0 && kycStatus?.pending === 0 && (
+                                  {kycStatus?.approved >= 3 && kycStatus?.rejected === 0 && kycStatus?.pending === 0 && (
                                     <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/30 flex items-center gap-2">
                                       <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
                                       <p className="text-sm text-green-700 dark:text-green-400">
